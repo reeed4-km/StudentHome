@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Profil - StudentHome Marrakech{% endblock %}
+{% block content %}
+<section class="auth profile-bg">
+    <form class="form-card register-card" method="post" enctype="multipart/form-data">
+        <div class="register-head">
+            <div>
+                <p class="tag">{{ t('nav_profile') }}</p>
+                <h1>{{ t('profile_title') }}</h1>
+            </div>
+            <p class="role-pill">
+                {% if current_user.role == 'etudiant' %}
+                    {{ t('student') }}
+                {% elif current_user.role == 'proprietaire' %}
+                    {{ t('owner') }}
+                {% else %}
+                    Admin
+                {% endif %}
+            </p>
+        </div>
+
+        <p class="form-hint">{{ t('profile_hint') }}</p>
+
+        <div class="profile-photo-editor">
+            <div class="profile-preview" aria-hidden="true">
+                {% if current_user.avatar_path %}
+                    <img src="{{ url_for('static', filename=current_user.avatar_path) }}" alt="">
+                {% else %}
+                    <span>{{ current_user.nom[:1]|upper }}</span>
+                {% endif %}
+            </div>
+            <div>
+                <label for="photo_profil">{{ t('profile_photo') }}</label>
+                <input id="photo_profil" type="file" name="photo_profil" accept="image/jpeg,image/png,image/webp">
+                <p class="form-hint">{{ t('profile_photo_hint') }}</p>
+            </div>
+        </div>
+
+        <div class="register-grid">
+            <div class="field">
+                <label>{{ t('full_name') }}</label>
+                <input type="text" name="nom" value="{{ current_user.nom }}" required>
+            </div>
+            <div class="field">
+                <label>{{ t('email') }}</label>
+                <input class="readonly-input" type="email" value="{{ current_user.email }}" readonly>
+            </div>
+        </div>
+
+        {% if current_user.role == 'etudiant' and current_user.etudiant %}
+            <div class="register-grid">
+                <div class="field">
+                    <label>{{ t('faculty') }}</label>
+                    <input type="text" name="faculte_uca" value="{{ current_user.etudiant.faculte_uca }}" required>
+                </div>
+                <div class="field">
+                    <label>{{ t('massar_code') }}</label>
+                    <input type="text" name="numero_etudiant" value="{{ current_user.etudiant.numero_etudiant }}" required>
+                </div>
+            </div>
+        {% elif current_user.role == 'proprietaire' and current_user.proprietaire %}
+            <div class="register-grid">
+                <div class="field field-wide">
+                    <label>{{ t('phone') }}</label>
+                    <input type="text" name="telephone" value="{{ current_user.proprietaire.telephone }}" required>
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="profile-password-block">
+            <h2>{{ t('change_password') }}</h2>
+            <p class="form-hint">{{ t('keep_password_hint') }}</p>
+            <div class="register-grid">
+                <div class="field">
+                    <label>{{ t('new_password') }}</label>
+                    <input type="password" name="nouveau_mot_de_passe" placeholder="{{ t('password_min_placeholder') }}">
+                </div>
+                <div class="field">
+                    <label>{{ t('confirm_password') }}</label>
+                    <input type="password" name="confirmation" placeholder="{{ t('repeat_password_placeholder') }}">
+                </div>
+            </div>
+        </div>
+
+        <button class="btn btn-primary full" type="submit">{{ t('save_changes') }}</button>
+    </form>
+</section>
+{% endblock %}

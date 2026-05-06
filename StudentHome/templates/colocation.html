@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Colocation - StudentHome{% endblock %}
+{% block content %}
+<section class="section">
+    <div class="section-title">
+        <div>
+            <p class="tag">Matching intelligent</p>
+            <h1>Espace colocation</h1>
+        </div>
+    </div>
+
+    <form class="form-card wide" method="post">
+        <h2>Mon profil colocation</h2>
+        <div class="register-grid">
+            <div class="field"><label>Budget</label><input type="number" name="budget" value="{{ profil.budget if profil else '' }}"></div>
+            <div class="field">
+                <label>Faculte</label>
+                <select name="faculte">
+                    {% for code, item in facultes.items() %}
+                        <option value="{{ code }}" {% if profil and profil.faculte == code %}selected{% endif %}>{{ code }} - {{ item.nom }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field"><label>Fumeur</label><select name="fumeur"><option value="non">Non</option><option value="oui" {% if profil and profil.fumeur == 'oui' %}selected{% endif %}>Oui</option></select></div>
+            <div class="field"><label>Sommeil</label><select name="sommeil"><option value="normal">Normal</option><option value="tot" {% if profil and profil.sommeil == 'tot' %}selected{% endif %}>Se couche tôt</option><option value="tard" {% if profil and profil.sommeil == 'tard' %}selected{% endif %}>Se couche tard</option></select></div>
+            <div class="field"><label>Propreté</label><select name="proprete"><option value="normal">Normal</option><option value="elevee" {% if profil and profil.proprete == 'elevee' %}selected{% endif %}>Très propre</option></select></div>
+            <div class="field"><label>Sérieux</label><select name="serieux"><option value="normal">Normal</option><option value="calme" {% if profil and profil.serieux == 'calme' %}selected{% endif %}>Calme et sérieux</option></select></div>
+            <div class="field field-wide"><label>Langue</label><input type="text" name="langue" value="{{ profil.langue if profil else 'francais' }}"></div>
+        </div>
+        <button class="btn btn-primary full" type="submit">Enregistrer mon profil</button>
+    </form>
+
+    <section class="section compact-section">
+        <h2>Profils compatibles</h2>
+        <div class="cards">
+            {% for match in matches %}
+                <article class="card card-body">
+                    <h3>{{ match.profil.etudiant.utilisateur.nom }}</h3>
+                    <p>{{ match.profil.faculte }} · Budget {{ match.profil.budget|int }} DH</p>
+                    <strong>{{ match.score }}% compatible</strong>
+                </article>
+            {% else %}
+                <div class="empty-state wide-empty"><p>Crée ton profil pour voir des suggestions compatibles.</p></div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <form class="form-card wide" action="{{ url_for('budget_colocation') }}" method="post">
+        <h2>Calculateur budget colocation</h2>
+        <div class="register-grid">
+            <input name="loyer" type="number" placeholder="Loyer">
+            <input name="charges" type="number" placeholder="Charges">
+            <input name="internet" type="number" placeholder="Internet">
+            <input name="eau" type="number" placeholder="Eau / électricité">
+            <input name="personnes" type="number" min="1" placeholder="Nombre de personnes">
+        </div>
+        <button class="btn btn-secondary full" type="submit">Calculer</button>
+    </form>
+</section>
+{% endblock %}

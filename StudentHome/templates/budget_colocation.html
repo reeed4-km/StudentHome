@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Budget colocation - StudentHome{% endblock %}
+{% block content %}
+<section class="auth">
+    <div class="form-card">
+        <p class="tag">Budget colocation</p>
+        <h1>{{ part }} DH / personne</h1>
+        <p>Total : {{ total }} DH pour {{ personnes }} personne(s).</p>
+        <a class="btn btn-primary full" href="{{ url_for('colocation') }}">Retour colocation</a>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Dashboard propriétaire - StudentHome{% endblock %}
+{% block content %}
+<section class="section">
+    <div class="section-title">
+        <h1>Espace propriétaire</h1>
+        <a class="btn btn-primary" href="{{ url_for('ajouter_annonce') }}">Ajouter une annonce</a>
+    </div>
+    <div class="cards">
+        {% for logement in logements %}
+        <article class="card">
+            {% if logement.is_video %}
+                <video class="card-media" src="{{ url_for('static', filename=logement.media_path) }}" muted playsinline preload="metadata"></video>
+            {% else %}
+                <img src="{{ url_for('static', filename=logement.media_path) }}" alt="{{ logement.titre }}">
+            {% endif %}
+            <div class="card-body">
+                <h3>{{ logement.titre }}</h3>
+                <p>{{ logement.prix|int }} DH - {{ logement.quartier }}</p>
+                <p>{{ logement.vues or 0 }} vues · {{ logement.favoris|length }} favoris · {{ logement.visites|length }} visites</p>
+                {% if logement.date_disponibilite %}
+                    <p class="availability-date">Disponible à partir du {{ logement.date_disponibilite }}</p>
+                {% endif %}
+                <p class="status {{ 'ok' if logement.est_disponible else 'off' }}">
+                    {{ 'Visible' if logement.est_disponible else 'Indisponible' }}
+                </p>
+                <div class="table-actions">
+                    <a class="btn btn-small" href="{{ url_for('modifier_annonce', id=logement.id) }}">Modifier</a>
+                    <a class="btn btn-small btn-secondary" href="{{ url_for('inventaire', id=logement.id) }}">Inventaire</a>
+                    <a class="btn btn-small btn-danger" href="{{ url_for('supprimer_annonce', id=logement.id) }}">Supprimer</a>
+                </div>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+
+    <h2>Calendrier des visites</h2>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Étudiant</th><th>Logement</th><th>Date</th><th>Statut</th></tr></thead>
+            <tbody>
+                {% for visite in visites %}
+                <tr><td>{{ visite.etudiant.utilisateur.nom }}</td><td>{{ visite.logement.titre }}</td><td>{{ visite.date_visite }}</td><td>{{ visite.statut }}</td></tr>
+                {% else %}
+                <tr><td colspan="4">Aucune visite planifiée.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <h2>Incidents signalés</h2>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Logement</th><th>Étudiant</th><th>Description</th><th>Statut</th></tr></thead>
+            <tbody>
+                {% for incident in incidents %}
+                <tr><td>{{ incident.logement.titre }}</td><td>{{ incident.etudiant.utilisateur.nom }}</td><td>{{ incident.description }}</td><td>{{ incident.statut }}</td></tr>
+                {% else %}
+                <tr><td colspan="4">Aucun incident.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <h2>Demandes reçues</h2>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Étudiant</th><th>Logement</th><th>Statut</th><th>Paiement</th><th>Actions</th></tr></thead>
+            <tbody>
+                {% for demande in demandes %}
+                <tr>
+                    <td>{{ demande.etudiant.utilisateur.nom }}</td>
+                    <td>{{ demande.logement.titre }}</td>
+                    <td>{{ demande.statut_reservation }}</td>
+                    <td>{{ demande.statut_paiement }}</td>
+                    <td class="table-actions">
+                        <a class="btn btn-small" href="{{ url_for('accepter_reservation', id=demande.id) }}">Accepter</a>
+                        <a class="btn btn-small btn-danger" href="{{ url_for('refuser_reservation', id=demande.id) }}">Refuser</a>
+                        {% if demande.statut_reservation == 'Fonds en séquestre' %}
+                            <a class="btn btn-small btn-secondary" href="{{ url_for('confirmer_conformite', id=demande.id) }}">Conforme</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5">Aucune demande.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
