@@ -712,8 +712,17 @@ def inject_language_helpers():
     if lang not in SUPPORTED_LANGUAGES:
         lang = "fr"
 
+    def fix_text_encoding(value):
+        if not isinstance(value, str) or not any(marker in value for marker in ("Ã", "â", "Ø", "Ù")):
+            return value
+        try:
+            return value.encode("latin1").decode("utf-8")
+        except UnicodeError:
+            return value
+
     def t(key):
-        return TRANSLATIONS.get(lang, TRANSLATIONS["fr"]).get(key, TRANSLATIONS["fr"].get(key, key))
+        value = TRANSLATIONS.get(lang, TRANSLATIONS["fr"]).get(key, TRANSLATIONS["fr"].get(key, key))
+        return fix_text_encoding(value)
 
     return {"t": t, "current_lang": lang, "is_rtl": lang == "ar"}
 
