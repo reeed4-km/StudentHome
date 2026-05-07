@@ -6,7 +6,7 @@ import math
 import smtplib
 import urllib.parse
 import urllib.request
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from email.message import EmailMessage
 from functools import wraps
 
@@ -17,6 +17,12 @@ from sqlalchemy import or_, text
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
+try:
+    from flask_mail import Mail, Message as MailMessage
+except ImportError:
+    Mail = None
+    MailMessage = None
+
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
@@ -26,6 +32,7 @@ PROFILE_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
 ADMIN_EMAIL = "redakouchtam@icloud.com"
 ADMIN_DEFAULT_PASSWORD = "Admin@12345"
 SUPPORTED_LANGUAGES = {"fr", "en", "ar"}
+STUDENTHOME_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSeIqfPAxMvEvFlE0aXYicDXN6f7arsgtZHDk8zv3OnQVNJjqw/viewform?usp=sharing&ouid=100864576385540183701"
 
 
 def load_env_file():
@@ -42,6 +49,17 @@ def load_env_file():
 
 
 load_env_file()
+
+
+def fix_text_encoding(value):
+    if not isinstance(value, str) or not any(marker in value for marker in ("Ã", "â", "Ø", "Ù", "Ă", "Â")):
+        return value
+    for encoding in ("cp1252", "latin1"):
+        try:
+            return value.encode(encoding).decode("utf-8")
+        except UnicodeError:
+            continue
+    return value
 
 FACULTES_UCA = {
     "FSSM": {"nom": "Faculte des Sciences Semlalia", "lat": 31.64931, "lng": -8.01571},
@@ -496,11 +514,19 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = "studenthome-cle-secrete-dev"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(BASE_DIR, "database.db")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["MAIL_SERVER"] = os.environ.get("STUDENTHOME_SMTP_HOST", "smtp.gmail.com")
+app.config["MAIL_PORT"] = int(os.environ.get("STUDENTHOME_SMTP_PORT", "587"))
+app.config["MAIL_USE_TLS"] = os.environ.get("STUDENTHOME_SMTP_TLS", "true").lower() == "true"
+app.config["MAIL_USERNAME"] = os.environ.get("STUDENTHOME_SMTP_USER")
+app.config["MAIL_PASSWORD"] = os.environ.get("STUDENTHOME_SMTP_PASSWORD")
+app.config["MAIL_DEFAULT_SENDER"] = os.environ.get("STUDENTHOME_SMTP_SENDER") or app.config["MAIL_USERNAME"]
 
 db = SQLAlchemy(app)
+mail = Mail(app) if Mail else None
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
 login_manager.login_message = "Connectez-vous pour continuer."
+app.jinja_env.filters["fix_encoding"] = fix_text_encoding
 
 
 class Utilisateur(UserMixin, db.Model):
@@ -510,6 +536,7 @@ class Utilisateur(UserMixin, db.Model):
     mot_de_passe = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(30), nullable=False)
     photo_profil = db.Column(db.String(220), nullable=True)
+    email_verifie = db.Column(db.Boolean, default=False)
 
     etudiant = db.relationship("Etudiant", backref="utilisateur", uselist=False, cascade="all, delete")
     proprietaire = db.relationship("Proprietaire", backref="utilisateur", uselist=False, cascade="all, delete")
@@ -712,16 +739,6 @@ def inject_language_helpers():
     if lang not in SUPPORTED_LANGUAGES:
         lang = "fr"
 
-    def fix_text_encoding(value):
-        if not isinstance(value, str) or not any(marker in value for marker in ("Ã", "â", "Ø", "Ù", "Ă", "Â")):
-            return value
-        for encoding in ("cp1252", "latin1"):
-            try:
-                return value.encode(encoding).decode("utf-8")
-            except UnicodeError:
-                continue
-        return value
-
     def t(key):
         value = TRANSLATIONS.get(lang, TRANSLATIONS["fr"]).get(key, TRANSLATIONS["fr"].get(key, key))
         return fix_text_encoding(value)
@@ -755,6 +772,11 @@ def generate_verification_code():
 
 
 def send_email_code(destination, code, subject="Code de verification StudentHome"):
+    body = f"Votre code de verification StudentHome est : {code}"
+    return send_email_message(destination, subject, body)
+
+
+def send_email_message(destination, subject, body):
     smtp_host = os.environ.get("STUDENTHOME_SMTP_HOST")
     smtp_port = int(os.environ.get("STUDENTHOME_SMTP_PORT", "587"))
     smtp_user = os.environ.get("STUDENTHOME_SMTP_USER")
@@ -769,7 +791,7 @@ def send_email_code(destination, code, subject="Code de verification StudentHome
     message["Subject"] = subject
     message["From"] = smtp_sender
     message["To"] = destination
-    message.set_content(f"Votre code de verification StudentHome est : {code}")
+    message.set_content(body)
 
     try:
         with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
@@ -780,6 +802,31 @@ def send_email_code(destination, code, subject="Code de verification StudentHome
     except Exception as exc:
         app.logger.error("Erreur envoi email vers %s: %s", destination, exc)
         return False
+
+
+def send_registration_form_email(utilisateur):
+    subject = "Bienvenue sur StudentHome Marrakech - formulaire utilisateur"
+    body = (
+        f"Bonjour {utilisateur.nom},\n\n"
+        "Bienvenue sur StudentHome Marrakech.\n\n"
+        "Merci de remplir ce formulaire afin de nous aider a mieux comprendre vos besoins, "
+        "ameliorer la plateforme et adapter les fonctionnalites aux etudiants et proprietaires.\n\n"
+        f"Lien du formulaire : {STUDENTHOME_FORM_URL}\n\n"
+        "Merci pour votre participation.\n"
+        "L'equipe StudentHome Marrakech"
+    )
+    return send_email_message(utilisateur.email, subject, body)
+
+
+def send_registration_form_to_all_users():
+    sent = 0
+    failed = 0
+    for utilisateur in Utilisateur.query.order_by(Utilisateur.id.asc()).all():
+        if send_registration_form_email(utilisateur):
+            sent += 1
+        else:
+            failed += 1
+    return sent, failed
 
 
 def send_sms_code(destination, code):
@@ -807,6 +854,7 @@ def create_user_from_registration(pending):
         email=pending["email"],
         mot_de_passe=pending["password_hash"],
         role=pending["role"],
+        email_verifie=True,
     )
     db.session.add(utilisateur)
     db.session.flush()
@@ -827,6 +875,7 @@ def create_user_from_registration(pending):
             )
         )
     db.session.commit()
+    send_registration_form_email(utilisateur)
     return utilisateur
 
 
@@ -1038,8 +1087,10 @@ def sync_admin_account():
             email=ADMIN_EMAIL,
             mot_de_passe=generate_password_hash(ADMIN_DEFAULT_PASSWORD),
             role="admin",
+            email_verifie=True,
         )
         db.session.add(admin_user)
+    admin_user.email_verifie = True
     db.session.commit()
 
 
@@ -1064,6 +1115,15 @@ def ensure_user_profile_photo_column():
     column_names = [column[1] for column in columns]
     if "photo_profil" not in column_names:
         db.session.execute(text("ALTER TABLE utilisateur ADD COLUMN photo_profil VARCHAR(220)"))
+        db.session.commit()
+
+
+def ensure_user_email_verified_column():
+    columns = db.session.execute(text("PRAGMA table_info(utilisateur)")).fetchall()
+    column_names = [column[1] for column in columns]
+    if "email_verifie" not in column_names:
+        db.session.execute(text("ALTER TABLE utilisateur ADD COLUMN email_verifie BOOLEAN DEFAULT 0"))
+        db.session.execute(text("UPDATE utilisateur SET email_verifie = 1 WHERE email = :email"), {"email": ADMIN_EMAIL})
         db.session.commit()
 
 
@@ -1099,6 +1159,7 @@ def init_database():
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     db.create_all()
     ensure_user_profile_photo_column()
+    ensure_user_email_verified_column()
     ensure_logement_advanced_columns()
     ensure_colocation_year_column()
     ensure_logement_type_column()
@@ -1236,35 +1297,20 @@ def register():
         session["pending_email_code"] = email_code
         session["pending_phone_code"] = phone_code
         email_sent = send_email_code(email, email_code, "Verification de votre compte StudentHome")
+        if not email_sent:
+            session.pop("pending_registration", None)
+            session.pop("pending_email_code", None)
+            session.pop("pending_phone_code", None)
+            session.pop("pending_phone_required", None)
+            flash("Email non envoye : configurez SMTP dans Render avant d'autoriser les inscriptions. Aucun compte n'a ete cree.", "error")
+            return redirect(url_for("register", role=role, next=request.form.get("next", "")))
         if role == "proprietaire":
             phone_sent = send_sms_code(role_data["telephone"], phone_code)
             session["pending_phone_required"] = phone_sent
-            if email_sent:
-                flash("Un code a ete envoye a votre email. Le code telephone est requis seulement si le service SMS est configure.", "success")
-            else:
-                utilisateur = create_user_from_registration(session["pending_registration"])
-                session.pop("pending_registration", None)
-                session.pop("pending_email_code", None)
-                session.pop("pending_phone_code", None)
-                session.pop("pending_phone_required", None)
-                login_user(utilisateur)
-                flash("SMTP non configure : le compte a ete cree et garde dans la base de donnees sans verification email.", "error")
-                return redirect(safe_next_url("index"))
+            flash("Un code a ete envoye a votre email. Le code telephone est requis seulement si le service SMS est configure.", "success")
         else:
-            if email_sent:
-                flash("Un code de verification a ete envoye a votre email.", "success")
-            else:
-                utilisateur = create_user_from_registration(session["pending_registration"])
-                session.pop("pending_registration", None)
-                session.pop("pending_email_code", None)
-                session.pop("pending_phone_code", None)
-                session.pop("pending_phone_required", None)
-                login_user(utilisateur)
-                flash("SMTP non configure : le compte a ete cree et garde dans la base de donnees sans verification email.", "error")
-                return redirect(safe_next_url("index"))
+            flash("Un code de verification a ete envoye a votre email.", "success")
         return redirect(url_for("verifier_compte"))
-        flash("Compte crÃ©Ã© avec succÃ¨s. Vous Ãªtes maintenant connectÃ©.", "success")
-        return redirect(safe_next_url("index"))
 
     selected_role = request.args.get("role", "etudiant")
     if selected_role not in ["etudiant", "proprietaire"]:
@@ -1318,6 +1364,9 @@ def login():
         admin_without_password = identifiant.lower() == ADMIN_EMAIL and utilisateur and utilisateur.role == "admin"
 
         if utilisateur and (admin_without_password or check_password_hash(utilisateur.mot_de_passe, password)):
+            if not utilisateur.email_verifie and utilisateur.role != "admin":
+                flash("Votre email n'est pas encore verifie. Demandez un nouveau compte avec un email valide.", "error")
+                return redirect(url_for("login"))
             login_user(utilisateur)
             if request.form.get("next"):
                 return redirect(safe_next_url("index"))
@@ -2050,6 +2099,18 @@ def dashboard_admin():
         messages_recents=messages_recents,
         support_messages=support_messages,
     )
+
+
+@app.route("/admin/envoyer-formulaire", methods=["POST"])
+@login_required
+@role_required("admin")
+def envoyer_formulaire_inscrits():
+    sent, failed = send_registration_form_to_all_users()
+    if failed:
+        flash(f"Formulaire envoye a {sent} utilisateur(s). {failed} email(s) non envoyes : verifiez la configuration SMTP.", "error")
+    else:
+        flash(f"Formulaire envoye a {sent} utilisateur(s).", "success")
+    return redirect(url_for("dashboard_admin"))
 
 
 @app.route("/colocation", methods=["GET", "POST"])

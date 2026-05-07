@@ -7,7 +7,12 @@
             <p class="tag">Administration</p>
             <h1>Vue globale StudentHome</h1>
         </div>
-        <a class="btn btn-light" href="{{ url_for('logements') }}">Voir les annonces</a>
+        <div class="table-actions">
+            <a class="btn btn-light" href="{{ url_for('logements') }}">Voir les annonces</a>
+            <form class="inline-delete-form" method="post" action="{{ url_for('envoyer_formulaire_inscrits') }}">
+                <button class="btn btn-secondary" type="submit">Envoyer le formulaire aux inscrits</button>
+            </form>
+        </div>
     </div>
 
     <div class="stats-grid">

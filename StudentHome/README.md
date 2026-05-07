@@ -41,7 +41,7 @@ http://127.0.0.1:5000/studenthome-marrakech
 
 StudentHome ne montre jamais les codes de verification dans l'interface. Pour que les utilisateurs recoivent vraiment les codes par email, creez un fichier `.env` a la racine du projet avec les variables ci-dessous. Avec Gmail, il faut utiliser un mot de passe d'application, pas le mot de passe normal du compte.
 
-Si SMTP n'est pas configure, l'application ne pretend plus envoyer le code : le compte est cree directement et reste enregistre dans `database.db`, avec un message d'avertissement.
+Si SMTP n'est pas configure, aucun compte public n'est cree : l'utilisateur doit recevoir le code par email et le saisir avant que son compte soit enregistre comme verifie.
 
 Variables email SMTP :
 
@@ -52,6 +52,10 @@ STUDENTHOME_SMTP_USER=votre_email@gmail.com
 STUDENTHOME_SMTP_PASSWORD=mot_de_passe_application
 STUDENTHOME_SMTP_SENDER=votre_email@gmail.com
 ```
+
+Apres configuration SMTP, chaque nouvel utilisateur inscrit recoit automatiquement un email avec le formulaire Google Forms StudentHome. L'administrateur peut aussi renvoyer ce formulaire a tous les utilisateurs depuis le dashboard admin.
+
+Sur Render, ajoutez ces variables dans `Environment` du service web, puis redeployez. Sans ces variables, Gmail ne pourra pas envoyer les codes.
 
 Variables SMS, selon le fournisseur choisi :
 
