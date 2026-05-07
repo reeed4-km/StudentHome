@@ -39,7 +39,9 @@ http://127.0.0.1:5000/studenthome-marrakech
 
 ## Verification email et SMS
 
-StudentHome ne montre jamais les codes de verification dans l'interface. En mode developpement, si aucun service d'envoi n'est configure, les codes sont seulement ecrits dans le terminal Flask.
+StudentHome ne montre jamais les codes de verification dans l'interface. Pour que les utilisateurs recoivent vraiment les codes par email, creez un fichier `.env` a la racine du projet avec les variables ci-dessous. Avec Gmail, il faut utiliser un mot de passe d'application, pas le mot de passe normal du compte.
+
+Si SMTP n'est pas configure, l'application ne pretend plus envoyer le code : le compte est cree directement et reste enregistre dans `database.db`, avec un message d'avertissement.
 
 Variables email SMTP :
 

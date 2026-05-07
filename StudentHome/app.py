@@ -1,4 +1,4 @@
-import os
+﻿import os
 import random
 import re
 import io
@@ -26,6 +26,22 @@ PROFILE_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
 ADMIN_EMAIL = "redakouchtam@icloud.com"
 ADMIN_DEFAULT_PASSWORD = "Admin@12345"
 SUPPORTED_LANGUAGES = {"fr", "en", "ar"}
+
+
+def load_env_file():
+    env_path = os.path.join(BASE_DIR, ".env")
+    if not os.path.exists(env_path):
+        return
+    with open(env_path, "r", encoding="utf-8") as env_file:
+        for line in env_file:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+load_env_file()
 
 FACULTES_UCA = {
     "FSSM": {"nom": "Faculte des Sciences Semlalia", "lat": 31.64931, "lng": -8.01571},
@@ -58,120 +74,141 @@ TRANSLATIONS = {
     "fr": {
         "nav_housing": "Logements",
         "nav_dashboard": "Dashboard",
-        "nav_reservations": "Réservations",
+        "nav_reservations": "RÃ©servations",
         "nav_messages": "Messagerie",
         "nav_help": "Aide",
         "nav_profile": "Profil",
         "nav_add": "Ajouter",
         "nav_admin": "Admin",
-        "nav_logout": "Déconnexion",
+        "nav_logout": "DÃ©connexion",
         "nav_login": "Connexion",
         "nav_register": "Inscription",
-        "footer": "StudentHome - Plateforme de logement étudiant pour l'UCA",
-        "hero_tag": "Logement étudiant UCA",
-        "hero_title": "Trouvez un logement proche de votre faculté.",
-        "hero_text": "StudentHome aide les étudiants à chercher, réserver, payer de façon simulée par QR Code et suivre leur demande en toute simplicité.",
+        "nav_home": "Accueil",
+        "nav_favorites": "Favoris",
+        "nav_colocation": "Colocation",
+        "nav_vault": "Coffre-fort",
+        "budget_recommendation": "Budget recommande",
+        "min_rooms": "Chambres minimum",
+        "floor": "Etage",
+        "max_distance_faculty": "Distance max faculte (km)",
+        "colocation_only": "Colocation uniquement",
+        "interactive_map": "Carte interactive",
+        "show_map": "Afficher la carte",
+        "recommended_housing": "Logements recommandes pour vous",
+        "contract": "Contrat",
+        "no_action": "Aucune action",
+        "university_year": "Annee universitaire",
+        "smoker": "Fumeur",
+        "budget": "Budget",
+        "roommate_space": "Espace colocation",
+        "roommate_profile": "Mon profil colocation",
+        "compatible_profiles": "Profils compatibles",
+        "roommate_budget_calculator": "Calculateur budget colocation",
+        "footer": "StudentHome - Plateforme de logement Ã©tudiant pour l'UCA",
+        "hero_tag": "Logement Ã©tudiant UCA",
+        "hero_title": "Trouvez un logement proche de votre facultÃ©.",
+        "hero_text": "StudentHome aide les Ã©tudiants Ã  chercher, rÃ©server et suivre leur demande en toute simplicitÃ©.",
         "explore_housing": "Explorer les logements",
-        "create_account": "Créer un compte",
+        "create_account": "CrÃ©er un compte",
         "popular_housing": "Logements populaires",
         "view_all": "Tout voir",
         "no_listing_title": "Aucune annonce disponible pour le moment",
-        "no_listing_text": "Les logements apparaîtront ici dès qu’un propriétaire publiera sa première annonce.",
-        "create_owner_account": "Créer un compte propriétaire",
-        "for_students": "Pour étudiants",
-        "for_students_text": "Recherche par faculté, quartier, prix, réservation, paiement QR simulé et avis.",
-        "for_owners": "Pour propriétaires",
-        "for_owners_text": "Publication d'annonces, gestion des demandes et validation de conformité.",
+        "no_listing_text": "Les logements apparaÃ®tront ici dÃ¨s quâ€™un propriÃ©taire publiera sa premiÃ¨re annonce.",
+        "create_owner_account": "CrÃ©er un compte propriÃ©taire",
+        "for_students": "Pour Ã©tudiants",
+        "for_students_text": "Recherche par facultÃ©, quartier, prix, rÃ©servation, suivi des demandes et avis.",
+        "for_owners": "Pour propriÃ©taires",
+        "for_owners_text": "Publication d'annonces, gestion des demandes et validation de conformitÃ©.",
         "choose_role_title": "Choisissez votre type de compte",
-        "choose_role_text": "Sélectionnez le profil qui correspond à votre utilisation de StudentHome.",
-        "student": "Étudiant",
-        "owner": "Propriétaire",
-        "student_choice_text": "Rechercher un logement, contacter un propriétaire et suivre vos réservations.",
-        "owner_choice_text": "Publier vos annonces, répondre aux étudiants et gérer vos demandes.",
+        "choose_role_text": "SÃ©lectionnez le profil qui correspond Ã  votre utilisation de StudentHome.",
+        "student": "Ã‰tudiant",
+        "owner": "PropriÃ©taire",
+        "student_choice_text": "Rechercher un logement, contacter un propriÃ©taire et suivre vos rÃ©servations.",
+        "owner_choice_text": "Publier vos annonces, rÃ©pondre aux Ã©tudiants et gÃ©rer vos demandes.",
         "continue": "Continuer",
         "register_title": "Inscription",
         "login_title": "Connexion",
         "full_name": "Nom complet",
         "email": "Email",
         "password": "Mot de passe",
-        "faculty": "Faculté UCA",
+        "faculty": "FacultÃ© UCA",
         "massar_code": "Code Massar",
-        "phone": "Téléphone",
-        "create_the_account": "Créer le compte",
+        "phone": "TÃ©lÃ©phone",
+        "create_the_account": "CrÃ©er le compte",
         "identifier": "Identifiant",
         "login_button": "Se connecter",
         "login_continue_text": "Connectez-vous pour continuer votre action.",
-        "login_identifier_placeholder": "Code Massar étudiant ou email",
-        "forgot_password": "Mot de passe oublié ?",
-        "create_student_account": "Créer un compte étudiant",
+        "login_identifier_placeholder": "Code Massar Ã©tudiant ou email",
+        "forgot_password": "Mot de passe oubliÃ© ?",
+        "create_student_account": "CrÃ©er un compte Ã©tudiant",
         "change": "Changer",
-        "register_continue_text": "Créez votre compte pour continuer votre action sur StudentHome.",
-        "strong_password_placeholder": "8 caractères, majuscule, minuscule, chiffre, spécial",
+        "register_continue_text": "CrÃ©ez votre compte pour continuer votre action sur StudentHome.",
+        "strong_password_placeholder": "8 caractÃ¨res, majuscule, minuscule, chiffre, spÃ©cial",
         "massar_example": "Exemple : G123456789",
         "profile_title": "Mon profil",
-        "profile_hint": "Votre email reste verrouillé. Vous pouvez modifier les autres informations de votre compte.",
+        "profile_hint": "Votre email reste verrouillÃ©. Vous pouvez modifier les autres informations de votre compte.",
         "profile_photo": "Photo de profil",
-        "profile_photo_hint": "Ajoutez une image JPG, PNG ou WEBP. Si vous ne choisissez rien, l'avatar actuel reste gardé.",
+        "profile_photo_hint": "Ajoutez une image JPG, PNG ou WEBP. Si vous ne choisissez rien, l'avatar actuel reste gardÃ©.",
         "change_password": "Changer le mot de passe",
         "keep_password_hint": "Laissez ces champs vides si vous souhaitez garder votre mot de passe actuel.",
         "new_password": "Nouveau mot de passe",
         "confirm_password": "Confirmer le mot de passe",
-        "password_min_placeholder": "8 caractères minimum",
+        "password_min_placeholder": "8 caractÃ¨res minimum",
         "repeat_password_placeholder": "Retapez le mot de passe",
         "save_changes": "Enregistrer les modifications",
         "search_housing_title": "Rechercher un logement",
-        "search_placeholder": "Tapez une recherche : quartier, faculté, titre...",
+        "search_placeholder": "Tapez une recherche : quartier, facultÃ©, titre...",
         "filter": "Filtrer",
         "search": "Rechercher",
-        "sector_marrakech": "Secteur à Marrakech",
+        "sector_marrakech": "Secteur Ã  Marrakech",
         "all_sectors": "Tous les secteurs",
         "min_price": "Prix min",
         "max_price": "Prix max",
         "housing_type": "Type de logement",
         "all_types": "Tous les types",
-        "near_faculty": "Faculté proche",
+        "near_faculty": "FacultÃ© proche",
         "available_only": "Disponible uniquement",
-        "reset": "Réinitialiser",
+        "reset": "RÃ©initialiser",
         "apply_filters": "Appliquer les filtres",
-        "no_listing_now": "Aucune annonce pour l’instant",
-        "no_listing_long": "Il n’y a encore aucun logement publié sur StudentHome. Dès qu’un propriétaire ajoute une annonce, elle sera affichée ici.",
-        "publish_first_listing": "Publier la première annonce",
-        "available_from": "Disponible à partir du",
+        "no_listing_now": "Aucune annonce pour lâ€™instant",
+        "no_listing_long": "Il nâ€™y a encore aucun logement publiÃ© sur StudentHome. DÃ¨s quâ€™un propriÃ©taire ajoute une annonce, elle sera affichÃ©e ici.",
+        "publish_first_listing": "Publier la premiÃ¨re annonce",
+        "available_from": "Disponible Ã  partir du",
         "available": "Disponible",
         "unavailable": "Indisponible",
-        "view_details": "Voir détails",
+        "view_details": "Voir dÃ©tails",
         "close_to": "proche",
         "month": "mois",
         "table_housing": "Logement",
         "table_date": "Date",
         "table_amount": "Montant",
         "table_payment": "Paiement",
-        "table_reservation": "Réservation",
+        "table_reservation": "RÃ©servation",
         "table_actions": "Actions",
         "pay": "Payer",
         "review": "Avis",
-        "no_reservation": "Aucune réservation.",
+        "no_reservation": "Aucune rÃ©servation.",
         "messages_title": "Mes discussions",
         "view_housing": "Voir les logements",
         "discussions": "Discussions",
         "no_discussion_title": "Aucune discussion pour le moment",
-        "no_discussion_text": "Les conversations apparaîtront ici après un premier message envoyé depuis une annonce.",
-        "chat_preview_text": "Sélectionnez une discussion pour consulter les messages et répondre comme dans une messagerie instantanée.",
-        "owner_label": "Propriétaire",
-        "student_label": "Étudiant",
+        "no_discussion_text": "Les conversations apparaÃ®tront ici aprÃ¨s un premier message envoyÃ© depuis une annonce.",
+        "chat_preview_text": "SÃ©lectionnez une discussion pour consulter les messages et rÃ©pondre comme dans une messagerie instantanÃ©e.",
+        "owner_label": "PropriÃ©taire",
+        "student_label": "Ã‰tudiant",
         "all_discussions": "Toutes les discussions",
         "conversation": "Conversation",
         "back": "Retour",
         "no_message_discussion": "Aucun message dans cette discussion.",
-        "write_message": "Écrire un message...",
+        "write_message": "Ã‰crire un message...",
         "send": "Envoyer",
-        "help_title": "Besoin d’aide ?",
-        "help_text": "Écrivez une demande d’aide, une remarque ou un commentaire. Votre nom et votre email seront ajoutés automatiquement depuis votre compte.",
+        "help_title": "Besoin dâ€™aide ?",
+        "help_text": "Ã‰crivez une demande dâ€™aide, une remarque ou un commentaire. Votre nom et votre email seront ajoutÃ©s automatiquement depuis votre compte.",
         "name": "Nom",
         "subject": "Sujet",
-        "help_subject_placeholder": "Exemple : Problème de réservation",
+        "help_subject_placeholder": "Exemple : ProblÃ¨me de rÃ©servation",
         "message_or_comment": "Message ou commentaire",
-        "help_message_placeholder": "Décrivez votre demande...",
+        "help_message_placeholder": "DÃ©crivez votre demande...",
         "send_request": "Envoyer la demande",
     },
     "en": {
@@ -186,10 +223,31 @@ TRANSLATIONS = {
         "nav_logout": "Logout",
         "nav_login": "Login",
         "nav_register": "Sign up",
+        "nav_home": "Home",
+        "nav_favorites": "Favorites",
+        "nav_colocation": "Roommates",
+        "nav_vault": "Digital vault",
+        "budget_recommendation": "Recommended budget",
+        "min_rooms": "Minimum rooms",
+        "floor": "Floor",
+        "max_distance_faculty": "Max distance to faculty (km)",
+        "colocation_only": "Roommate housing only",
+        "interactive_map": "Interactive map",
+        "show_map": "Show map",
+        "recommended_housing": "Recommended housing for you",
+        "contract": "Contract",
+        "no_action": "No action",
+        "university_year": "University year",
+        "smoker": "Smoker",
+        "budget": "Budget",
+        "roommate_space": "Roommate space",
+        "roommate_profile": "My roommate profile",
+        "compatible_profiles": "Compatible profiles",
+        "roommate_budget_calculator": "Roommate budget calculator",
         "footer": "StudentHome - Student housing platform for UCA",
         "hero_tag": "UCA student housing",
         "hero_title": "Find housing close to your faculty.",
-        "hero_text": "StudentHome helps students search, reserve, simulate QR Code payment and track their requests with ease.",
+        "hero_text": "StudentHome helps students search, reserve and track their requests with ease.",
         "explore_housing": "Explore housing",
         "create_account": "Create account",
         "popular_housing": "Popular housing",
@@ -198,7 +256,7 @@ TRANSLATIONS = {
         "no_listing_text": "Housing listings will appear here as soon as an owner publishes the first listing.",
         "create_owner_account": "Create owner account",
         "for_students": "For students",
-        "for_students_text": "Search by faculty, area, price, reservation, simulated QR payment and reviews.",
+        "for_students_text": "Search by faculty, area, price, reservation tracking and reviews.",
         "for_owners": "For owners",
         "for_owners_text": "Publish listings, manage requests and confirm housing conformity.",
         "choose_role_title": "Choose your account type",
@@ -294,122 +352,143 @@ TRANSLATIONS = {
         "send_request": "Send request",
     },
     "ar": {
-        "nav_housing": "السكن",
-        "nav_dashboard": "لوحة التحكم",
-        "nav_reservations": "الحجوزات",
-        "nav_messages": "الرسائل",
-        "nav_help": "مساعدة",
-        "nav_add": "إضافة",
-        "nav_admin": "الإدارة",
-        "nav_logout": "خروج",
-        "nav_login": "دخول",
-        "nav_register": "تسجيل",
-        "footer": "StudentHome - منصة السكن الطلابي لجامعة القاضي عياض",
-        "hero_tag": "سكن طلاب جامعة القاضي عياض",
-        "hero_title": "اعثر على سكن قريب من كليتك.",
-        "hero_text": "يساعد StudentHome الطلاب على البحث والحجز ومحاكاة الدفع عبر رمز QR وتتبع الطلبات بسهولة.",
-        "explore_housing": "استكشاف السكن",
-        "create_account": "إنشاء حساب",
-        "popular_housing": "إعلانات مميزة",
-        "view_all": "عرض الكل",
-        "no_listing_title": "لا توجد إعلانات حاليا",
-        "no_listing_text": "ستظهر الإعلانات هنا عندما ينشر أول مالك إعلانه.",
-        "create_owner_account": "إنشاء حساب مالك",
-        "for_students": "للطلاب",
-        "for_students_text": "البحث حسب الكلية، الحي، السعر، الحجز، الدفع التجريبي عبر QR والتقييمات.",
-        "for_owners": "للمالكين",
-        "for_owners_text": "نشر الإعلانات، إدارة الطلبات وتأكيد مطابقة السكن.",
-        "choose_role_title": "اختر نوع الحساب",
-        "choose_role_text": "اختر الملف المناسب لاستخدامك لمنصة StudentHome.",
-        "student": "طالب",
-        "owner": "مالك",
-        "student_choice_text": "ابحث عن السكن، تواصل مع المالكين وتتبع حجوزاتك.",
-        "owner_choice_text": "انشر إعلاناتك، أجب الطلاب وقم بإدارة الطلبات.",
-        "continue": "متابعة",
-        "register_title": "تسجيل",
-        "login_title": "دخول",
-        "full_name": "الاسم الكامل",
-        "email": "البريد الإلكتروني",
-        "password": "كلمة المرور",
-        "faculty": "كلية UCA",
-        "massar_code": "رمز مسار",
-        "phone": "الهاتف",
-        "create_the_account": "إنشاء الحساب",
-        "identifier": "المعرّف",
-        "login_button": "دخول",
-        "login_continue_text": "سجل الدخول لمتابعة العملية.",
-        "login_identifier_placeholder": "رمز مسار للطالب أو البريد الإلكتروني",
-        "forgot_password": "نسيت كلمة المرور؟",
-        "create_student_account": "إنشاء حساب طالب",
-        "change": "تغيير",
-        "register_continue_text": "أنشئ حسابك لمتابعة العملية على StudentHome.",
-        "strong_password_placeholder": "8 أحرف، حرف كبير، حرف صغير، رقم، رمز خاص",
-        "massar_example": "مثال: G123456789",
-        "profile_title": "ملفي الشخصي",
-        "profile_hint": "يبقى بريدك الإلكتروني مقفلا. يمكنك تعديل باقي معلومات حسابك.",
-        "profile_photo": "صورة الملف الشخصي",
-        "profile_photo_hint": "أضف صورة JPG أو PNG أو WEBP. إذا لم تختر شيئا فسيبقى الرمز الحالي.",
-        "change_password": "تغيير كلمة المرور",
-        "keep_password_hint": "اترك هذه الخانات فارغة إذا أردت الاحتفاظ بكلمة المرور الحالية.",
-        "new_password": "كلمة مرور جديدة",
-        "confirm_password": "تأكيد كلمة المرور",
-        "password_min_placeholder": "8 أحرف على الأقل",
-        "repeat_password_placeholder": "أعد كتابة كلمة المرور",
-        "save_changes": "حفظ التعديلات",
-        "search_housing_title": "البحث عن سكن",
-        "search_placeholder": "اكتب بحثا: الحي، الكلية، العنوان...",
-        "filter": "تصفية",
-        "search": "بحث",
-        "sector_marrakech": "الحي في مراكش",
-        "all_sectors": "كل الأحياء",
-        "min_price": "أقل سعر",
-        "max_price": "أعلى سعر",
-        "housing_type": "نوع السكن",
-        "all_types": "كل الأنواع",
-        "near_faculty": "الكلية القريبة",
-        "available_only": "المتاح فقط",
-        "reset": "إعادة ضبط",
-        "apply_filters": "تطبيق الفلاتر",
-        "no_listing_now": "لا توجد إعلانات حاليا",
-        "no_listing_long": "لم يتم نشر أي سكن على StudentHome بعد. عندما يضيف مالك إعلانا سيظهر هنا.",
-        "publish_first_listing": "نشر أول إعلان",
-        "available_from": "متاح ابتداء من",
-        "available": "متاح",
-        "unavailable": "غير متاح",
-        "view_details": "عرض التفاصيل",
-        "close_to": "قريب من",
-        "month": "شهر",
-        "table_housing": "السكن",
-        "table_date": "التاريخ",
-        "table_amount": "المبلغ",
-        "table_payment": "الدفع",
-        "table_reservation": "الحجز",
-        "table_actions": "الإجراءات",
-        "pay": "دفع",
-        "review": "تقييم",
-        "no_reservation": "لا توجد حجوزات.",
-        "messages_title": "محادثاتي",
-        "view_housing": "عرض السكن",
-        "discussions": "المحادثات",
-        "no_discussion_title": "لا توجد محادثة حاليا",
-        "no_discussion_text": "ستظهر المحادثات هنا بعد إرسال أول رسالة من إعلان.",
-        "chat_preview_text": "اختر محادثة لعرض الرسائل والرد مثل تطبيقات المراسلة.",
-        "owner_label": "المالك",
-        "student_label": "الطالب",
-        "all_discussions": "كل المحادثات",
-        "conversation": "محادثة",
-        "back": "رجوع",
-        "no_message_discussion": "لا توجد رسائل في هذه المحادثة.",
-        "write_message": "اكتب رسالة...",
-        "send": "إرسال",
-        "help_title": "هل تحتاج مساعدة؟",
-        "help_text": "اكتب طلب مساعدة أو ملاحظة أو تعليقا. سيتم إضافة اسمك وبريدك تلقائيا من حسابك.",
-        "name": "الاسم",
-        "subject": "الموضوع",
-        "help_subject_placeholder": "مثال: مشكلة في الحجز",
-        "message_or_comment": "رسالة أو تعليق",
-        "help_message_placeholder": "صف طلبك...",
-        "send_request": "إرسال الطلب",
+        "nav_housing": "Ø§Ù„Ø³ÙƒÙ†",
+        "nav_dashboard": "Ù„ÙˆØ­Ø© Ø§Ù„ØªØ­ÙƒÙ…",
+        "nav_reservations": "Ø§Ù„Ø­Ø¬ÙˆØ²Ø§Øª",
+        "nav_messages": "Ø§Ù„Ø±Ø³Ø§Ø¦Ù„",
+        "nav_help": "Ù…Ø³Ø§Ø¹Ø¯Ø©",
+        "nav_add": "Ø¥Ø¶Ø§ÙØ©",
+        "nav_admin": "Ø§Ù„Ø¥Ø¯Ø§Ø±Ø©",
+        "nav_logout": "Ø®Ø±ÙˆØ¬",
+        "nav_login": "Ø¯Ø®ÙˆÙ„",
+        "nav_register": "ØªØ³Ø¬ÙŠÙ„",
+        "nav_home": "Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠØ©",
+        "nav_favorites": "Ø§Ù„Ù…ÙØ¶Ù„Ø©",
+        "nav_colocation": "Ø§Ù„Ø³ÙƒÙ† Ø§Ù„Ù…Ø´ØªØ±Ùƒ",
+        "nav_vault": "Ø§Ù„Ø®Ø²Ù†Ø© Ø§Ù„Ø±Ù‚Ù…ÙŠØ©",
+        "budget_recommendation": "Ø§Ù„Ù…ÙŠØ²Ø§Ù†ÙŠØ© Ø§Ù„Ù…Ù‚ØªØ±Ø­Ø©",
+        "min_rooms": "Ø£Ù‚Ù„ Ø¹Ø¯Ø¯ Ø§Ù„ØºØ±Ù",
+        "floor": "Ø§Ù„Ø·Ø§Ø¨Ù‚",
+        "max_distance_faculty": "Ø£Ù‚ØµÙ‰ Ù…Ø³Ø§ÙØ© Ø¹Ù† Ø§Ù„ÙƒÙ„ÙŠØ© (ÙƒÙ…) ",
+        "colocation_only": "Ø§Ù„Ø³ÙƒÙ† Ø§Ù„Ù…Ø´ØªØ±Ùƒ ÙÙ‚Ø·",
+        "interactive_map": "Ø®Ø±ÙŠØ·Ø© ØªÙØ§Ø¹Ù„ÙŠØ©",
+        "show_map": "Ø¥Ø¸Ù‡Ø§Ø± Ø§Ù„Ø®Ø±ÙŠØ·Ø©",
+        "recommended_housing": "Ø³ÙƒÙ† Ù…Ù‚ØªØ±Ø­ Ù„Ùƒ",
+        "contract": "Ø¹Ù‚Ø¯",
+        "no_action": "Ù„Ø§ Ø¥Ø¬Ø±Ø§Ø¡",
+        "university_year": "Ø§Ù„Ø³Ù†Ø© Ø§Ù„Ø¬Ø§Ù…Ø¹ÙŠØ©",
+        "smoker": "Ù…Ø¯Ø®Ù†",
+        "budget": "Ø§Ù„Ù…ÙŠØ²Ø§Ù†ÙŠØ©",
+        "roommate_space": "ÙØ¶Ø§Ø¡ Ø§Ù„Ø³ÙƒÙ† Ø§Ù„Ù…Ø´ØªØ±Ùƒ",
+        "roommate_profile": "Ù…Ù„ÙÙŠ Ù„Ù„Ø³ÙƒÙ† Ø§Ù„Ù…Ø´ØªØ±Ùƒ",
+        "compatible_profiles": "Ù…Ù„ÙØ§Øª Ù…ØªÙˆØ§ÙÙ‚Ø©",
+        "roommate_budget_calculator": "Ø­Ø§Ø³Ø¨Ø© Ù…ÙŠØ²Ø§Ù†ÙŠØ© Ø§Ù„Ø³ÙƒÙ† Ø§Ù„Ù…Ø´ØªØ±Ùƒ",
+        "footer": "StudentHome - Ù…Ù†ØµØ© Ø§Ù„Ø³ÙƒÙ† Ø§Ù„Ø·Ù„Ø§Ø¨ÙŠ Ù„Ø¬Ø§Ù…Ø¹Ø© Ø§Ù„Ù‚Ø§Ø¶ÙŠ Ø¹ÙŠØ§Ø¶",
+        "hero_tag": "Ø³ÙƒÙ† Ø·Ù„Ø§Ø¨ Ø¬Ø§Ù…Ø¹Ø© Ø§Ù„Ù‚Ø§Ø¶ÙŠ Ø¹ÙŠØ§Ø¶",
+        "hero_title": "Ø§Ø¹Ø«Ø± Ø¹Ù„Ù‰ Ø³ÙƒÙ† Ù‚Ø±ÙŠØ¨ Ù…Ù† ÙƒÙ„ÙŠØªÙƒ.",
+        "hero_text": "ÙŠØ³Ø§Ø¹Ø¯ StudentHome Ø§Ù„Ø·Ù„Ø§Ø¨ Ø¹Ù„Ù‰ Ø§Ù„Ø¨Ø­Ø« ÙˆØ§Ù„Ø­Ø¬Ø² ÙˆØªØªØ¨Ø¹ Ø§Ù„Ø·Ù„Ø¨Ø§Øª Ø¨Ø³Ù‡ÙˆÙ„Ø©.",
+        "explore_housing": "Ø§Ø³ØªÙƒØ´Ø§Ù Ø§Ù„Ø³ÙƒÙ†",
+        "create_account": "Ø¥Ù†Ø´Ø§Ø¡ Ø­Ø³Ø§Ø¨",
+        "popular_housing": "Ø¥Ø¹Ù„Ø§Ù†Ø§Øª Ù…Ù…ÙŠØ²Ø©",
+        "view_all": "Ø¹Ø±Ø¶ Ø§Ù„ÙƒÙ„",
+        "no_listing_title": "Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¥Ø¹Ù„Ø§Ù†Ø§Øª Ø­Ø§Ù„ÙŠØ§",
+        "no_listing_text": "Ø³ØªØ¸Ù‡Ø± Ø§Ù„Ø¥Ø¹Ù„Ø§Ù†Ø§Øª Ù‡Ù†Ø§ Ø¹Ù†Ø¯Ù…Ø§ ÙŠÙ†Ø´Ø± Ø£ÙˆÙ„ Ù…Ø§Ù„Ùƒ Ø¥Ø¹Ù„Ø§Ù†Ù‡.",
+        "create_owner_account": "Ø¥Ù†Ø´Ø§Ø¡ Ø­Ø³Ø§Ø¨ Ù…Ø§Ù„Ùƒ",
+        "for_students": "Ù„Ù„Ø·Ù„Ø§Ø¨",
+        "for_students_text": "Ø§Ù„Ø¨Ø­Ø« Ø­Ø³Ø¨ Ø§Ù„ÙƒÙ„ÙŠØ©ØŒ Ø§Ù„Ø­ÙŠØŒ Ø§Ù„Ø³Ø¹Ø±ØŒ Ø§Ù„Ø­Ø¬Ø²ØŒ ØªØªØ¨Ø¹ Ø§Ù„Ø·Ù„Ø¨Ø§Øª ÙˆØ§Ù„ØªÙ‚ÙŠÙŠÙ…Ø§Øª.",
+        "for_owners": "Ù„Ù„Ù…Ø§Ù„ÙƒÙŠÙ†",
+        "for_owners_text": "Ù†Ø´Ø± Ø§Ù„Ø¥Ø¹Ù„Ø§Ù†Ø§ØªØŒ Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„Ø·Ù„Ø¨Ø§Øª ÙˆØªØ£ÙƒÙŠØ¯ Ù…Ø·Ø§Ø¨Ù‚Ø© Ø§Ù„Ø³ÙƒÙ†.",
+        "choose_role_title": "Ø§Ø®ØªØ± Ù†ÙˆØ¹ Ø§Ù„Ø­Ø³Ø§Ø¨",
+        "choose_role_text": "Ø§Ø®ØªØ± Ø§Ù„Ù…Ù„Ù Ø§Ù„Ù…Ù†Ø§Ø³Ø¨ Ù„Ø§Ø³ØªØ®Ø¯Ø§Ù…Ùƒ Ù„Ù…Ù†ØµØ© StudentHome.",
+        "student": "Ø·Ø§Ù„Ø¨",
+        "owner": "Ù…Ø§Ù„Ùƒ",
+        "student_choice_text": "Ø§Ø¨Ø­Ø« Ø¹Ù† Ø§Ù„Ø³ÙƒÙ†ØŒ ØªÙˆØ§ØµÙ„ Ù…Ø¹ Ø§Ù„Ù…Ø§Ù„ÙƒÙŠÙ† ÙˆØªØªØ¨Ø¹ Ø­Ø¬ÙˆØ²Ø§ØªÙƒ.",
+        "owner_choice_text": "Ø§Ù†Ø´Ø± Ø¥Ø¹Ù„Ø§Ù†Ø§ØªÙƒØŒ Ø£Ø¬Ø¨ Ø§Ù„Ø·Ù„Ø§Ø¨ ÙˆÙ‚Ù… Ø¨Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„Ø·Ù„Ø¨Ø§Øª.",
+        "continue": "Ù…ØªØ§Ø¨Ø¹Ø©",
+        "register_title": "ØªØ³Ø¬ÙŠÙ„",
+        "login_title": "Ø¯Ø®ÙˆÙ„",
+        "full_name": "Ø§Ù„Ø§Ø³Ù… Ø§Ù„ÙƒØ§Ù…Ù„",
+        "email": "Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ",
+        "password": "ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ±",
+        "faculty": "ÙƒÙ„ÙŠØ© UCA",
+        "massar_code": "Ø±Ù…Ø² Ù…Ø³Ø§Ø±",
+        "phone": "Ø§Ù„Ù‡Ø§ØªÙ",
+        "create_the_account": "Ø¥Ù†Ø´Ø§Ø¡ Ø§Ù„Ø­Ø³Ø§Ø¨",
+        "identifier": "Ø§Ù„Ù…Ø¹Ø±Ù‘Ù",
+        "login_button": "Ø¯Ø®ÙˆÙ„",
+        "login_continue_text": "Ø³Ø¬Ù„ Ø§Ù„Ø¯Ø®ÙˆÙ„ Ù„Ù…ØªØ§Ø¨Ø¹Ø© Ø§Ù„Ø¹Ù…Ù„ÙŠØ©.",
+        "login_identifier_placeholder": "Ø±Ù…Ø² Ù…Ø³Ø§Ø± Ù„Ù„Ø·Ø§Ù„Ø¨ Ø£Ùˆ Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ",
+        "forgot_password": "Ù†Ø³ÙŠØª ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ±ØŸ",
+        "create_student_account": "Ø¥Ù†Ø´Ø§Ø¡ Ø­Ø³Ø§Ø¨ Ø·Ø§Ù„Ø¨",
+        "change": "ØªØºÙŠÙŠØ±",
+        "register_continue_text": "Ø£Ù†Ø´Ø¦ Ø­Ø³Ø§Ø¨Ùƒ Ù„Ù…ØªØ§Ø¨Ø¹Ø© Ø§Ù„Ø¹Ù…Ù„ÙŠØ© Ø¹Ù„Ù‰ StudentHome.",
+        "strong_password_placeholder": "8 Ø£Ø­Ø±ÙØŒ Ø­Ø±Ù ÙƒØ¨ÙŠØ±ØŒ Ø­Ø±Ù ØµØºÙŠØ±ØŒ Ø±Ù‚Ù…ØŒ Ø±Ù…Ø² Ø®Ø§Øµ",
+        "massar_example": "Ù…Ø«Ø§Ù„: G123456789",
+        "profile_title": "Ù…Ù„ÙÙŠ Ø§Ù„Ø´Ø®ØµÙŠ",
+        "profile_hint": "ÙŠØ¨Ù‚Ù‰ Ø¨Ø±ÙŠØ¯Ùƒ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ Ù…Ù‚ÙÙ„Ø§. ÙŠÙ…ÙƒÙ†Ùƒ ØªØ¹Ø¯ÙŠÙ„ Ø¨Ø§Ù‚ÙŠ Ù…Ø¹Ù„ÙˆÙ…Ø§Øª Ø­Ø³Ø§Ø¨Ùƒ.",
+        "profile_photo": "ØµÙˆØ±Ø© Ø§Ù„Ù…Ù„Ù Ø§Ù„Ø´Ø®ØµÙŠ",
+        "profile_photo_hint": "Ø£Ø¶Ù ØµÙˆØ±Ø© JPG Ø£Ùˆ PNG Ø£Ùˆ WEBP. Ø¥Ø°Ø§ Ù„Ù… ØªØ®ØªØ± Ø´ÙŠØ¦Ø§ ÙØ³ÙŠØ¨Ù‚Ù‰ Ø§Ù„Ø±Ù…Ø² Ø§Ù„Ø­Ø§Ù„ÙŠ.",
+        "change_password": "ØªØºÙŠÙŠØ± ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ±",
+        "keep_password_hint": "Ø§ØªØ±Ùƒ Ù‡Ø°Ù‡ Ø§Ù„Ø®Ø§Ù†Ø§Øª ÙØ§Ø±ØºØ© Ø¥Ø°Ø§ Ø£Ø±Ø¯Øª Ø§Ù„Ø§Ø­ØªÙØ§Ø¸ Ø¨ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ± Ø§Ù„Ø­Ø§Ù„ÙŠØ©.",
+        "new_password": "ÙƒÙ„Ù…Ø© Ù…Ø±ÙˆØ± Ø¬Ø¯ÙŠØ¯Ø©",
+        "confirm_password": "ØªØ£ÙƒÙŠØ¯ ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ±",
+        "password_min_placeholder": "8 Ø£Ø­Ø±Ù Ø¹Ù„Ù‰ Ø§Ù„Ø£Ù‚Ù„",
+        "repeat_password_placeholder": "Ø£Ø¹Ø¯ ÙƒØªØ§Ø¨Ø© ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ±",
+        "save_changes": "Ø­ÙØ¸ Ø§Ù„ØªØ¹Ø¯ÙŠÙ„Ø§Øª",
+        "search_housing_title": "Ø§Ù„Ø¨Ø­Ø« Ø¹Ù† Ø³ÙƒÙ†",
+        "search_placeholder": "Ø§ÙƒØªØ¨ Ø¨Ø­Ø«Ø§: Ø§Ù„Ø­ÙŠØŒ Ø§Ù„ÙƒÙ„ÙŠØ©ØŒ Ø§Ù„Ø¹Ù†ÙˆØ§Ù†...",
+        "filter": "ØªØµÙÙŠØ©",
+        "search": "Ø¨Ø­Ø«",
+        "sector_marrakech": "Ø§Ù„Ø­ÙŠ ÙÙŠ Ù…Ø±Ø§ÙƒØ´",
+        "all_sectors": "ÙƒÙ„ Ø§Ù„Ø£Ø­ÙŠØ§Ø¡",
+        "min_price": "Ø£Ù‚Ù„ Ø³Ø¹Ø±",
+        "max_price": "Ø£Ø¹Ù„Ù‰ Ø³Ø¹Ø±",
+        "housing_type": "Ù†ÙˆØ¹ Ø§Ù„Ø³ÙƒÙ†",
+        "all_types": "ÙƒÙ„ Ø§Ù„Ø£Ù†ÙˆØ§Ø¹",
+        "near_faculty": "Ø§Ù„ÙƒÙ„ÙŠØ© Ø§Ù„Ù‚Ø±ÙŠØ¨Ø©",
+        "available_only": "Ø§Ù„Ù…ØªØ§Ø­ ÙÙ‚Ø·",
+        "reset": "Ø¥Ø¹Ø§Ø¯Ø© Ø¶Ø¨Ø·",
+        "apply_filters": "ØªØ·Ø¨ÙŠÙ‚ Ø§Ù„ÙÙ„Ø§ØªØ±",
+        "no_listing_now": "Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¥Ø¹Ù„Ø§Ù†Ø§Øª Ø­Ø§Ù„ÙŠØ§",
+        "no_listing_long": "Ù„Ù… ÙŠØªÙ… Ù†Ø´Ø± Ø£ÙŠ Ø³ÙƒÙ† Ø¹Ù„Ù‰ StudentHome Ø¨Ø¹Ø¯. Ø¹Ù†Ø¯Ù…Ø§ ÙŠØ¶ÙŠÙ Ù…Ø§Ù„Ùƒ Ø¥Ø¹Ù„Ø§Ù†Ø§ Ø³ÙŠØ¸Ù‡Ø± Ù‡Ù†Ø§.",
+        "publish_first_listing": "Ù†Ø´Ø± Ø£ÙˆÙ„ Ø¥Ø¹Ù„Ø§Ù†",
+        "available_from": "Ù…ØªØ§Ø­ Ø§Ø¨ØªØ¯Ø§Ø¡ Ù…Ù†",
+        "available": "Ù…ØªØ§Ø­",
+        "unavailable": "ØºÙŠØ± Ù…ØªØ§Ø­",
+        "view_details": "Ø¹Ø±Ø¶ Ø§Ù„ØªÙØ§ØµÙŠÙ„",
+        "close_to": "Ù‚Ø±ÙŠØ¨ Ù…Ù†",
+        "month": "Ø´Ù‡Ø±",
+        "table_housing": "Ø§Ù„Ø³ÙƒÙ†",
+        "table_date": "Ø§Ù„ØªØ§Ø±ÙŠØ®",
+        "table_amount": "Ø§Ù„Ù…Ø¨Ù„Øº",
+        "table_payment": "Ø§Ù„Ø¯ÙØ¹",
+        "table_reservation": "Ø§Ù„Ø­Ø¬Ø²",
+        "table_actions": "Ø§Ù„Ø¥Ø¬Ø±Ø§Ø¡Ø§Øª",
+        "pay": "Ø¯ÙØ¹",
+        "review": "ØªÙ‚ÙŠÙŠÙ…",
+        "no_reservation": "Ù„Ø§ ØªÙˆØ¬Ø¯ Ø­Ø¬ÙˆØ²Ø§Øª.",
+        "messages_title": "Ù…Ø­Ø§Ø¯Ø«Ø§ØªÙŠ",
+        "view_housing": "Ø¹Ø±Ø¶ Ø§Ù„Ø³ÙƒÙ†",
+        "discussions": "Ø§Ù„Ù…Ø­Ø§Ø¯Ø«Ø§Øª",
+        "no_discussion_title": "Ù„Ø§ ØªÙˆØ¬Ø¯ Ù…Ø­Ø§Ø¯Ø«Ø© Ø­Ø§Ù„ÙŠØ§",
+        "no_discussion_text": "Ø³ØªØ¸Ù‡Ø± Ø§Ù„Ù…Ø­Ø§Ø¯Ø«Ø§Øª Ù‡Ù†Ø§ Ø¨Ø¹Ø¯ Ø¥Ø±Ø³Ø§Ù„ Ø£ÙˆÙ„ Ø±Ø³Ø§Ù„Ø© Ù…Ù† Ø¥Ø¹Ù„Ø§Ù†.",
+        "chat_preview_text": "Ø§Ø®ØªØ± Ù…Ø­Ø§Ø¯Ø«Ø© Ù„Ø¹Ø±Ø¶ Ø§Ù„Ø±Ø³Ø§Ø¦Ù„ ÙˆØ§Ù„Ø±Ø¯ Ù…Ø«Ù„ ØªØ·Ø¨ÙŠÙ‚Ø§Øª Ø§Ù„Ù…Ø±Ø§Ø³Ù„Ø©.",
+        "owner_label": "Ø§Ù„Ù…Ø§Ù„Ùƒ",
+        "student_label": "Ø§Ù„Ø·Ø§Ù„Ø¨",
+        "all_discussions": "ÙƒÙ„ Ø§Ù„Ù…Ø­Ø§Ø¯Ø«Ø§Øª",
+        "conversation": "Ù…Ø­Ø§Ø¯Ø«Ø©",
+        "back": "Ø±Ø¬ÙˆØ¹",
+        "no_message_discussion": "Ù„Ø§ ØªÙˆØ¬Ø¯ Ø±Ø³Ø§Ø¦Ù„ ÙÙŠ Ù‡Ø°Ù‡ Ø§Ù„Ù…Ø­Ø§Ø¯Ø«Ø©.",
+        "write_message": "Ø§ÙƒØªØ¨ Ø±Ø³Ø§Ù„Ø©...",
+        "send": "Ø¥Ø±Ø³Ø§Ù„",
+        "help_title": "Ù‡Ù„ ØªØ­ØªØ§Ø¬ Ù…Ø³Ø§Ø¹Ø¯Ø©ØŸ",
+        "help_text": "Ø§ÙƒØªØ¨ Ø·Ù„Ø¨ Ù…Ø³Ø§Ø¹Ø¯Ø© Ø£Ùˆ Ù…Ù„Ø§Ø­Ø¸Ø© Ø£Ùˆ ØªØ¹Ù„ÙŠÙ‚Ø§. Ø³ÙŠØªÙ… Ø¥Ø¶Ø§ÙØ© Ø§Ø³Ù…Ùƒ ÙˆØ¨Ø±ÙŠØ¯Ùƒ ØªÙ„Ù‚Ø§Ø¦ÙŠØ§ Ù…Ù† Ø­Ø³Ø§Ø¨Ùƒ.",
+        "name": "Ø§Ù„Ø§Ø³Ù…",
+        "subject": "Ø§Ù„Ù…ÙˆØ¶ÙˆØ¹",
+        "help_subject_placeholder": "Ù…Ø«Ø§Ù„: Ù…Ø´ÙƒÙ„Ø© ÙÙŠ Ø§Ù„Ø­Ø¬Ø²",
+        "message_or_comment": "Ø±Ø³Ø§Ù„Ø© Ø£Ùˆ ØªØ¹Ù„ÙŠÙ‚",
+        "help_message_placeholder": "ØµÙ Ø·Ù„Ø¨Ùƒ...",
+        "send_request": "Ø¥Ø±Ø³Ø§Ù„ Ø§Ù„Ø·Ù„Ø¨",
     },
 }
 
@@ -501,7 +580,7 @@ class Reservation(db.Model):
     etudiant_id = db.Column(db.Integer, db.ForeignKey("etudiant.id"), nullable=False)
     date_debut = db.Column(db.String(20), nullable=False)
     montant_total = db.Column(db.Float, nullable=False)
-    statut_paiement = db.Column(db.String(40), default="Non payé")
+    statut_paiement = db.Column(db.String(40), default="Non payÃ©")
     statut_reservation = db.Column(db.String(60), default="En attente de validation")
 
     etudiant = db.relationship("Etudiant", backref="reservations")
@@ -645,7 +724,7 @@ def is_valid_massar(code_massar):
 
 
 def password_errors(password):
-    # Règles lisibles pour éviter les mots de passe trop faibles.
+    # RÃ¨gles lisibles pour Ã©viter les mots de passe trop faibles.
     errors = []
     if len(password) < 8:
         errors.append("au moins 8 caracteres")
@@ -672,7 +751,7 @@ def send_email_code(destination, code, subject="Code de verification StudentHome
     smtp_sender = os.environ.get("STUDENTHOME_SMTP_SENDER", smtp_user or "noreply@studenthome.local")
 
     if not smtp_host or not smtp_user or not smtp_password:
-        app.logger.warning("DEV EMAIL CODE for %s: %s", destination, code)
+        app.logger.warning("SMTP non configure. Email non envoye a %s.", destination)
         return False
 
     message = EmailMessage()
@@ -681,11 +760,15 @@ def send_email_code(destination, code, subject="Code de verification StudentHome
     message["To"] = destination
     message.set_content(f"Votre code de verification StudentHome est : {code}")
 
-    with smtplib.SMTP(smtp_host, smtp_port) as server:
-        server.starttls()
-        server.login(smtp_user, smtp_password)
-        server.send_message(message)
-    return True
+    try:
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_password)
+            server.send_message(message)
+        return True
+    except Exception as exc:
+        app.logger.error("Erreur envoi email vers %s: %s", destination, exc)
+        return False
 
 
 def send_sms_code(destination, code):
@@ -705,6 +788,35 @@ def send_verification_code(method, destination, code):
     if method == "sms":
         return send_sms_code(destination, code)
     return send_email_code(destination, code)
+
+
+def create_user_from_registration(pending):
+    utilisateur = Utilisateur(
+        nom=pending["nom"],
+        email=pending["email"],
+        mot_de_passe=pending["password_hash"],
+        role=pending["role"],
+    )
+    db.session.add(utilisateur)
+    db.session.flush()
+    if pending["role"] == "etudiant":
+        db.session.add(
+            Etudiant(
+                utilisateur_id=utilisateur.id,
+                faculte_uca=pending["role_data"]["faculte_uca"],
+                numero_etudiant=pending["role_data"]["numero_etudiant"],
+            )
+        )
+    elif pending["role"] == "proprietaire":
+        db.session.add(
+            Proprietaire(
+                utilisateur_id=utilisateur.id,
+                telephone=pending["role_data"]["telephone"],
+                est_verifie=True,
+            )
+        )
+    db.session.commit()
+    return utilisateur
 
 
 def safe_next_url(default_endpoint="index"):
@@ -802,12 +914,12 @@ def description_has_max_30_lines(description):
 
 
 def role_required(role):
-    # Petit décorateur pour protéger les pages selon le rôle connecté.
+    # Petit dÃ©corateur pour protÃ©ger les pages selon le rÃ´le connectÃ©.
     def decorator(function):
         @wraps(function)
         def wrapper(*args, **kwargs):
             if not current_user.is_authenticated or current_user.role != role:
-                flash("Accès réservé.", "error")
+                flash("AccÃ¨s rÃ©servÃ©.", "error")
                 return redirect(url_for("index"))
             return function(*args, **kwargs)
 
@@ -863,9 +975,9 @@ def update_demo_student_account():
 def remove_demo_housing():
     # L'application doit commencer sans annonces : elles seront ajoutees par les proprietaires.
     demo_titles = [
-        "Studio lumineux près de la FSSM",
-        "Chambre calme pour étudiante",
-        "Appartement économique",
+        "Studio lumineux prÃ¨s de la FSSM",
+        "Chambre calme pour Ã©tudiante",
+        "Appartement Ã©conomique",
     ]
     deleted = False
     for title in demo_titles:
@@ -950,7 +1062,7 @@ def ensure_colocation_year_column():
 
 
 def init_database():
-    # La base est créée automatiquement au lancement.
+    # La base est crÃ©Ã©e automatiquement au lancement.
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     db.create_all()
     ensure_user_profile_photo_column()
@@ -1033,7 +1145,7 @@ def aide():
         )
         db.session.add(support_message)
         db.session.commit()
-        flash("Votre message d'aide a été envoyé à l'administrateur.", "success")
+        flash("Votre message d'aide a Ã©tÃ© envoyÃ© Ã  l'administrateur.", "success")
         return redirect(url_for("aide"))
 
     return render_template("aide.html")
@@ -1056,7 +1168,7 @@ def register():
             return redirect(url_for("register"))
 
         if Utilisateur.query.filter_by(email=email).first():
-            flash("Cet email est déjà utilisé.", "error")
+            flash("Cet email est dÃ©jÃ  utilisÃ©.", "error")
             return redirect(url_for("register"))
 
         role_data = {}
@@ -1068,7 +1180,7 @@ def register():
                 flash("Code Massar invalide. Exemple attendu : G123456789.", "error")
                 return redirect(url_for("register"))
             if Etudiant.query.filter_by(numero_etudiant=numero).first():
-                flash("Ce code Massar est déjà utilisé.", "error")
+                flash("Ce code Massar est dÃ©jÃ  utilisÃ©.", "error")
                 return redirect(url_for("register"))
             role_data = {"faculte_uca": faculte, "numero_etudiant": numero}
         elif role == "proprietaire":
@@ -1090,14 +1202,35 @@ def register():
         }
         session["pending_email_code"] = email_code
         session["pending_phone_code"] = phone_code
-        send_email_code(email, email_code, "Verification de votre compte StudentHome")
+        email_sent = send_email_code(email, email_code, "Verification de votre compte StudentHome")
         if role == "proprietaire":
-            send_sms_code(role_data["telephone"], phone_code)
-            flash("Un code a ete envoye a votre email et un autre a votre telephone.", "success")
+            phone_sent = send_sms_code(role_data["telephone"], phone_code)
+            session["pending_phone_required"] = phone_sent
+            if email_sent:
+                flash("Un code a ete envoye a votre email. Le code telephone est requis seulement si le service SMS est configure.", "success")
+            else:
+                utilisateur = create_user_from_registration(session["pending_registration"])
+                session.pop("pending_registration", None)
+                session.pop("pending_email_code", None)
+                session.pop("pending_phone_code", None)
+                session.pop("pending_phone_required", None)
+                login_user(utilisateur)
+                flash("SMTP non configure : le compte a ete cree et garde dans la base de donnees sans verification email.", "error")
+                return redirect(safe_next_url("index"))
         else:
-            flash("Un code de verification a ete envoye a votre email.", "success")
+            if email_sent:
+                flash("Un code de verification a ete envoye a votre email.", "success")
+            else:
+                utilisateur = create_user_from_registration(session["pending_registration"])
+                session.pop("pending_registration", None)
+                session.pop("pending_email_code", None)
+                session.pop("pending_phone_code", None)
+                session.pop("pending_phone_required", None)
+                login_user(utilisateur)
+                flash("SMTP non configure : le compte a ete cree et garde dans la base de donnees sans verification email.", "error")
+                return redirect(safe_next_url("index"))
         return redirect(url_for("verifier_compte"))
-        flash("Compte créé avec succès. Vous êtes maintenant connecté.", "success")
+        flash("Compte crÃ©Ã© avec succÃ¨s. Vous Ãªtes maintenant connectÃ©.", "success")
         return redirect(safe_next_url("index"))
 
     selected_role = request.args.get("role", "etudiant")
@@ -1119,38 +1252,15 @@ def verifier_compte():
         if email_code != session.get("pending_email_code"):
             flash("Code email incorrect.", "error")
             return redirect(url_for("verifier_compte"))
-        if pending["role"] == "proprietaire" and phone_code != session.get("pending_phone_code"):
+        if pending["role"] == "proprietaire" and session.get("pending_phone_required") and phone_code != session.get("pending_phone_code"):
             flash("Code telephone incorrect.", "error")
             return redirect(url_for("verifier_compte"))
 
-        utilisateur = Utilisateur(
-            nom=pending["nom"],
-            email=pending["email"],
-            mot_de_passe=pending["password_hash"],
-            role=pending["role"],
-        )
-        db.session.add(utilisateur)
-        db.session.flush()
-        if pending["role"] == "etudiant":
-            db.session.add(
-                Etudiant(
-                    utilisateur_id=utilisateur.id,
-                    faculte_uca=pending["role_data"]["faculte_uca"],
-                    numero_etudiant=pending["role_data"]["numero_etudiant"],
-                )
-            )
-        elif pending["role"] == "proprietaire":
-            db.session.add(
-                Proprietaire(
-                    utilisateur_id=utilisateur.id,
-                    telephone=pending["role_data"]["telephone"],
-                    est_verifie=True,
-                )
-            )
-        db.session.commit()
+        utilisateur = create_user_from_registration(pending)
         session.pop("pending_registration", None)
         session.pop("pending_email_code", None)
         session.pop("pending_phone_code", None)
+        session.pop("pending_phone_required", None)
         login_user(utilisateur)
         flash("Compte verifie et cree avec succes.", "success")
         return redirect(pending.get("next") or url_for("index"))
@@ -1184,7 +1294,7 @@ def login():
                 return redirect(url_for("dashboard_proprietaire"))
             if utilisateur.role == "admin":
                 return redirect(url_for("dashboard_admin"))
-            flash("Ce rôle n'est plus pris en charge.", "error")
+            flash("Ce rÃ´le n'est plus pris en charge.", "error")
             logout_user()
             return redirect(url_for("index"))
 
@@ -1208,7 +1318,7 @@ def mot_de_passe_oublie():
                 utilisateur = etudiant.utilisateur
                 destination = utilisateur.email
             if methode == "sms":
-                flash("Pour un étudiant, la vérification se fait par Gmail car aucun numéro téléphone étudiant n'est enregistré.", "error")
+                flash("Pour un Ã©tudiant, la vÃ©rification se fait par Gmail car aucun numÃ©ro tÃ©lÃ©phone Ã©tudiant n'est enregistrÃ©.", "error")
                 return redirect(url_for("mot_de_passe_oublie"))
         elif role == "proprietaire":
             proprietaire = Proprietaire.query.filter_by(telephone=identifiant).first()
@@ -1238,7 +1348,7 @@ def mot_de_passe_oublie():
 def reinitialiser_mot_de_passe():
     user_id = session.get("reset_user_id")
     if not user_id:
-        flash("Commencez par demander un code de vérification.", "error")
+        flash("Commencez par demander un code de vÃ©rification.", "error")
         return redirect(url_for("mot_de_passe_oublie"))
 
     utilisateur = Utilisateur.query.get(user_id)
@@ -1252,7 +1362,7 @@ def reinitialiser_mot_de_passe():
         confirmation = request.form["confirmation"]
 
         if code != session.get("reset_code"):
-            flash("Code de vérification incorrect.", "error")
+            flash("Code de vÃ©rification incorrect.", "error")
             return redirect(url_for("reinitialiser_mot_de_passe"))
         if password != confirmation:
             flash("Les deux mots de passe ne correspondent pas.", "error")
@@ -1269,7 +1379,7 @@ def reinitialiser_mot_de_passe():
         session.pop("reset_code", None)
         session.pop("reset_method", None)
         session.pop("reset_destination", None)
-        flash("Mot de passe changé avec succès. Vous pouvez vous connecter.", "success")
+        flash("Mot de passe changÃ© avec succÃ¨s. Vous pouvez vous connecter.", "success")
         return redirect(url_for("login"))
 
     return render_template(
@@ -1351,7 +1461,7 @@ def profil():
 @login_required
 def logout():
     logout_user()
-    flash("Déconnexion réussie.", "success")
+    flash("DÃ©connexion rÃ©ussie.", "success")
     return redirect(url_for("index"))
 
 
@@ -1415,7 +1525,7 @@ def logements():
         "Route de Casablanca",
         "Targa",
     ]
-    types_logement = ["Studio", "Chambre", "Appartement", "Colocation", "Maison", "Résidence étudiante"]
+    types_logement = ["Studio", "Chambre", "Appartement", "Colocation", "Maison", "RÃ©sidence Ã©tudiante"]
     logements_liste = query.all()
     distances = {}
     if faculte in FACULTES_UCA:
@@ -1481,7 +1591,7 @@ def detail_logement(id):
     db.session.commit()
     if request.method == "POST":
         if not current_user.is_authenticated or current_user.role != "etudiant":
-            flash("Connectez-vous avec un compte étudiant pour réserver.", "error")
+            flash("Connectez-vous avec un compte Ã©tudiant pour rÃ©server.", "error")
             return redirect(url_for("login", next=request.path))
         reservation = Reservation(
             logement_id=logement.id,
@@ -1491,7 +1601,7 @@ def detail_logement(id):
         )
         db.session.add(reservation)
         db.session.commit()
-        flash("Demande de réservation envoyée au propriétaire.", "success")
+        flash("Demande de rÃ©servation envoyÃ©e au propriÃ©taire.", "success")
         return redirect(url_for("reservations"))
     favori_actif = False
     if current_user.is_authenticated and current_user.role == "etudiant":
@@ -1503,7 +1613,7 @@ def detail_logement(id):
 def contacter_proprietaire(id):
     logement = Logement.query.get_or_404(id)
     if not current_user.is_authenticated or current_user.role != "etudiant":
-        flash("Pour envoyer un message au propriétaire, connectez-vous ou créez un compte étudiant avec votre code Massar.", "error")
+        flash("Pour envoyer un message au propriÃ©taire, connectez-vous ou crÃ©ez un compte Ã©tudiant avec votre code Massar.", "error")
         return redirect(url_for("login", next=url_for("detail_logement", id=logement.id)))
 
     sujet = request.form.get("sujet", "").strip()
@@ -1522,7 +1632,7 @@ def contacter_proprietaire(id):
     )
     db.session.add(message_client)
     db.session.commit()
-    flash("Votre message a été envoyé au propriétaire.", "success")
+    flash("Votre message a Ã©tÃ© envoyÃ© au propriÃ©taire.", "success")
     return redirect(url_for("discussion", logement_id=logement.id, etudiant_id=current_user.etudiant.id))
 
 
@@ -1674,7 +1784,7 @@ def messages():
             .all()
         )
     else:
-        flash("La messagerie est réservée aux étudiants et propriétaires.", "error")
+        flash("La messagerie est rÃ©servÃ©e aux Ã©tudiants et propriÃ©taires.", "error")
         return redirect(url_for("index"))
 
     discussions = []
@@ -1709,7 +1819,7 @@ def discussion(logement_id, etudiant_id):
         contenu = request.form.get("contenu", "").strip()
         sujet = request.form.get("sujet", "").strip() or f"Discussion - {logement.titre}"
         if not contenu:
-            flash("Le message ne peut pas être vide.", "error")
+            flash("Le message ne peut pas Ãªtre vide.", "error")
             return redirect(url_for("discussion", logement_id=logement.id, etudiant_id=etudiant.id))
 
         db.session.add(
@@ -1723,7 +1833,7 @@ def discussion(logement_id, etudiant_id):
             )
         )
         db.session.commit()
-        flash("Message envoyé.", "success")
+        flash("Message envoyÃ©.", "success")
         return redirect(url_for("discussion", logement_id=logement.id, etudiant_id=etudiant.id))
 
     messages_discussion = (
@@ -1743,7 +1853,7 @@ def discussion(logement_id, etudiant_id):
 @login_required
 def reservation_detail(id):
     reservation = Reservation.query.get_or_404(id)
-    return redirect(url_for("paiement", id=reservation.id))
+    return redirect(url_for("reservations"))
 
 
 @app.route("/reservations")
@@ -1760,26 +1870,10 @@ def reservations():
 def paiement(id):
     reservation = Reservation.query.get_or_404(id)
     if reservation.etudiant_id != current_user.etudiant.id:
-        flash("Réservation introuvable pour ce compte.", "error")
+        flash("Reservation introuvable pour ce compte.", "error")
         return redirect(url_for("reservations"))
-
-    if request.method == "POST":
-        action = request.form["action"]
-        if action == "payer":
-            reservation.statut_paiement = "Fonds en séquestre"
-            reservation.statut_reservation = "Fonds en séquestre"
-            flash("Paiement QR simulé : les fonds sont maintenant en séquestre.", "success")
-        elif action == "confirmer":
-            reservation.statut_paiement = "Confirmé"
-            reservation.statut_reservation = "Confirmé"
-            flash("Paiement confirmé.", "success")
-        elif action == "litige":
-            reservation.statut_reservation = "Litige"
-            flash("Litige signalé. Le propriétaire sera informé.", "error")
-        db.session.commit()
-        return redirect(url_for("reservations"))
-
-    return render_template("paiement.html", reservation=reservation)
+    flash("Le paiement en ligne n'est pas encore disponible sur StudentHome.", "error")
+    return redirect(url_for("reservations"))
 
 
 @app.route("/avis/<int:id>", methods=["GET", "POST"])
@@ -1787,8 +1881,8 @@ def paiement(id):
 @role_required("etudiant")
 def avis(id):
     reservation = Reservation.query.get_or_404(id)
-    if reservation.statut_reservation not in ["Confirmé", "Terminé"]:
-        flash("Vous pouvez laisser un avis après confirmation ou fin de réservation.", "error")
+    if reservation.statut_reservation not in ["Confirme", "ConfirmÃ©", "Termine", "TerminÃ©"]:
+        flash("Vous pouvez laisser un avis aprÃ¨s confirmation ou fin de rÃ©servation.", "error")
         return redirect(url_for("reservations"))
 
     if request.method == "POST":
@@ -1892,7 +1986,7 @@ def dashboard_admin():
         })
     for reservation in reservations[:5]:
         activites.append({
-            "type": "Réservation",
+            "type": "RÃ©servation",
             "titre": reservation.logement.titre,
             "detail": f"{reservation.etudiant.utilisateur.nom} - {reservation.statut_reservation}",
             "date": f"#{reservation.id}",
@@ -1937,7 +2031,6 @@ def colocation():
         profil.budget = float(request.form.get("budget") or 0)
         profil.faculte = request.form.get("faculte", current_user.etudiant.faculte_uca)
         profil.fumeur = request.form.get("fumeur", "non")
-        profil.proprete = request.form.get("proprete", "normal")
         annee = int(request.form.get("annee_universitaire") or 1)
         profil.annee_universitaire = min(max(annee, 1), 5)
         db.session.commit()
@@ -1949,7 +2042,7 @@ def colocation():
     if profil:
         for autre in profils:
             score = 0
-            for champ in ["faculte", "fumeur", "proprete", "annee_universitaire"]:
+            for champ in ["faculte", "fumeur", "annee_universitaire"]:
                 if getattr(profil, champ) == getattr(autre, champ):
                     score += 18
             if profil.budget and autre.budget:
@@ -2038,10 +2131,10 @@ def ajouter_annonce():
         uploaded_media = save_uploaded_media(request.files.get("media"))
 
         if not description_has_max_30_lines(description):
-            flash("La description ne doit pas dépasser 30 lignes.", "error")
+            flash("La description ne doit pas dÃ©passer 30 lignes.", "error")
             return redirect(url_for("ajouter_annonce"))
         if request.files.get("media") and request.files["media"].filename and not uploaded_media:
-            flash("Format média non autorisé. Utilisez jpg, png, webp, mp4, webm ou mov.", "error")
+            flash("Format mÃ©dia non autorisÃ©. Utilisez jpg, png, webp, mp4, webm ou mov.", "error")
             return redirect(url_for("ajouter_annonce"))
 
         logement = Logement(
@@ -2066,7 +2159,7 @@ def ajouter_annonce():
         )
         db.session.add(logement)
         db.session.commit()
-        flash("Annonce ajoutée avec succès. Elle est maintenant visible dans les logements.", "success")
+        flash("Annonce ajoutÃ©e avec succÃ¨s. Elle est maintenant visible dans les logements.", "success")
         return redirect(url_for("dashboard_proprietaire"))
     return render_template("ajouter_annonce.html", logement=None)
 
@@ -2085,10 +2178,10 @@ def modifier_annonce(id):
         uploaded_media = save_uploaded_media(request.files.get("media"))
 
         if not description_has_max_30_lines(description):
-            flash("La description ne doit pas dépasser 30 lignes.", "error")
+            flash("La description ne doit pas dÃ©passer 30 lignes.", "error")
             return redirect(url_for("modifier_annonce", id=logement.id))
         if request.files.get("media") and request.files["media"].filename and not uploaded_media:
-            flash("Format média non autorisé. Utilisez jpg, png, webp, mp4, webm ou mov.", "error")
+            flash("Format mÃ©dia non autorisÃ©. Utilisez jpg, png, webp, mp4, webm ou mov.", "error")
             return redirect(url_for("modifier_annonce", id=logement.id))
 
         logement.titre = request.form["titre"].strip()
@@ -2109,7 +2202,7 @@ def modifier_annonce(id):
         logement.date_disponibilite = request.form["date_disponibilite"]
         logement.est_valide = True
         db.session.commit()
-        flash("Annonce modifiée avec succès.", "success")
+        flash("Annonce modifiÃ©e avec succÃ¨s.", "success")
         return redirect(url_for("dashboard_proprietaire"))
     return render_template("ajouter_annonce.html", logement=logement)
 
@@ -2133,7 +2226,7 @@ def supprimer_annonce(id):
     db.session.delete(logement)
     db.session.commit()
     if True:
-        flash("Annonce supprimée.", "success")
+        flash("Annonce supprimÃ©e.", "success")
     return redirect(url_for("dashboard_proprietaire"))
 
 
@@ -2143,9 +2236,10 @@ def supprimer_annonce(id):
 def accepter_reservation(id):
     reservation = Reservation.query.get_or_404(id)
     if reservation.logement.proprietaire_id == current_user.proprietaire.id:
-        reservation.statut_reservation = "En attente de paiement"
+        reservation.statut_reservation = "Confirme"
+        reservation.statut_paiement = "Non disponible"
         db.session.commit()
-        flash("Demande acceptée. L'étudiant peut payer.", "success")
+        flash("Demande acceptee. La reservation est confirmee.", "success")
     return redirect(url_for("dashboard_proprietaire"))
 
 
@@ -2155,9 +2249,9 @@ def accepter_reservation(id):
 def refuser_reservation(id):
     reservation = Reservation.query.get_or_404(id)
     if reservation.logement.proprietaire_id == current_user.proprietaire.id:
-        reservation.statut_reservation = "Refusé"
+        reservation.statut_reservation = "RefusÃ©"
         db.session.commit()
-        flash("Demande refusée.", "success")
+        flash("Demande refusÃ©e.", "success")
     return redirect(url_for("dashboard_proprietaire"))
 
 
@@ -2167,10 +2261,9 @@ def refuser_reservation(id):
 def confirmer_conformite(id):
     reservation = Reservation.query.get_or_404(id)
     if reservation.logement.proprietaire_id == current_user.proprietaire.id:
-        reservation.statut_reservation = "Terminé"
-        reservation.statut_paiement = "Confirmé"
+        reservation.statut_reservation = "TerminÃ©"
         db.session.commit()
-        flash("Logement confirmé conforme. Réservation terminée.", "success")
+        flash("Logement confirmÃ© conforme. RÃ©servation terminÃ©e.", "success")
     return redirect(url_for("dashboard_proprietaire"))
 
 
@@ -2182,3 +2275,5 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug_mode = os.environ.get("FLASK_DEBUG", "1") == "1"
     app.run(host="0.0.0.0", port=port, debug=debug_mode)
+
+

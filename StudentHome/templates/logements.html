@@ -38,7 +38,7 @@
                 <input type="number" name="prix_max" value="{{ filtres.get('prix_max', '') }}" placeholder="2500">
             </div>
             <div>
-                <label>Budget recommendation</label>
+                <label>{{ t('budget_recommendation') }}</label>
                 <input type="number" name="budget" value="{{ filtres.get('budget', '') }}" placeholder="Votre budget">
             </div>
             <div>
@@ -51,19 +51,19 @@
                 </select>
             </div>
             <div>
-                <label>Chambres minimum</label>
+                <label>{{ t('min_rooms') }}</label>
                 <input type="number" name="chambres" value="{{ filtres.get('chambres', '') }}" min="1">
             </div>
             <div>
-                <label>Etage</label>
+                <label>{{ t('floor') }}</label>
                 <input type="number" name="etage" value="{{ filtres.get('etage', '') }}">
             </div>
             <div>
-                <label>Distance max faculte (km)</label>
+                <label>{{ t('max_distance_faculty') }}</label>
                 <input type="number" step="0.1" name="distance_max" value="{{ filtres.get('distance_max', '') }}" placeholder="2">
             </div>
             <label class="check filter-check"><input type="checkbox" name="disponible" value="1" {% if filtres.get('disponible') == '1' %}checked{% endif %}> {{ t('available_only') }}</label>
-            <label class="check filter-check"><input type="checkbox" name="colocation" value="1" {% if filtres.get('colocation') == '1' %}checked{% endif %}> Colocation uniquement</label>
+            <label class="check filter-check"><input type="checkbox" name="colocation" value="1" {% if filtres.get('colocation') == '1' %}checked{% endif %}> {{ t('colocation_only') }}</label>
             <div class="filter-actions">
                 <a class="btn btn-light" href="{{ url_for('logements') }}">{{ t('reset') }}</a>
                 <button class="btn btn-secondary" type="submit">{{ t('apply_filters') }}</button>
@@ -74,10 +74,10 @@
     <div class="map-panel">
         <div class="section-title">
             <div>
-                <p class="tag">Carte interactive</p>
+                <p class="tag">{{ t('interactive_map') }}</p>
                 <h2>Logements et facultes UCA</h2>
             </div>
-            <button class="btn btn-secondary map-toggle" type="button" aria-expanded="false" aria-controls="housing-map">Afficher la carte</button>
+            <button class="btn btn-secondary map-toggle" type="button" aria-expanded="false" aria-controls="housing-map">{{ t('show_map') }}</button>
         </div>
         <div id="housing-map" class="is-hidden" data-logements='{{ map_logements|tojson }}' data-facultes='{{ map_facultes|tojson }}'></div>
     </div>
@@ -85,7 +85,7 @@
     {% if recommandations %}
     <section class="recommendations">
         <div class="section-title">
-            <h2>Logements recommandes pour vous</h2>
+            <h2>{{ t('recommended_housing') }}</h2>
             <span>Matching budget, faculte, distance et type</span>
         </div>
         <div class="cards">

@@ -1,20 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Paiement QR - StudentHome{% endblock %}
+{% block title %}Paiement indisponible - StudentHome{% endblock %}
 {% block content %}
 <section class="payment">
     <div class="form-card">
-        <h1>Paiement sécurisé simulé</h1>
-        <p>{{ reservation.logement.titre }}</p>
-        <h2>{{ reservation.montant_total|int }} DH</h2>
-        <div class="qr">
-            <span>StudentHome</span>
-            <small>QR DEMO #{{ reservation.id }}</small>
-        </div>
-        <form method="post" class="payment-actions">
-            <button class="btn btn-primary full" name="action" value="payer" type="submit">Valider le paiement</button>
-            <button class="btn btn-secondary full" name="action" value="confirmer" type="submit">Confirmer après remise des clés</button>
-            <button class="btn btn-danger full" name="action" value="litige" type="submit">Signaler un litige</button>
-        </form>
+        <h1>Paiement indisponible</h1>
+        <p>StudentHome ne propose pas encore le paiement en ligne. Le suivi de reservation reste disponible depuis votre tableau de bord.</p>
+        <a class="btn btn-primary full" href="{{ url_for('reservations') }}">Retour aux reservations</a>
     </div>
 </section>
 {% endblock %}

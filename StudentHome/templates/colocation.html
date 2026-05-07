@@ -1,18 +1,18 @@
 {% extends "base.html" %}
-{% block title %}Colocation - StudentHome{% endblock %}
+{% block title %}{{ t('nav_colocation') }} - StudentHome{% endblock %}
 {% block content %}
 <section class="section">
     <div class="section-title">
         <div>
             <p class="tag">Matching intelligent</p>
-            <h1>Espace colocation</h1>
+            <h1>{{ t('roommate_space') }}</h1>
         </div>
     </div>
 
     <form class="form-card wide" method="post">
-        <h2>Mon profil colocation</h2>
+        <h2>{{ t('roommate_profile') }}</h2>
         <div class="register-grid">
-            <div class="field"><label>Budget</label><input type="number" name="budget" value="{{ profil.budget if profil else '' }}"></div>
+            <div class="field"><label>{{ t('budget') }}</label><input type="number" name="budget" value="{{ profil.budget if profil else '' }}"></div>
             <div class="field">
                 <label>Faculte</label>
                 <select name="faculte">
@@ -21,10 +21,9 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="field"><label>Fumeur</label><select name="fumeur"><option value="non">Non</option><option value="oui" {% if profil and profil.fumeur == 'oui' %}selected{% endif %}>Oui</option></select></div>
-            <div class="field"><label>Proprete</label><select name="proprete"><option value="normal">Normal</option><option value="elevee" {% if profil and profil.proprete == 'elevee' %}selected{% endif %}>Tres propre</option></select></div>
+            <div class="field"><label>{{ t('smoker') }}</label><select name="fumeur"><option value="non">Non</option><option value="oui" {% if profil and profil.fumeur == 'oui' %}selected{% endif %}>Oui</option></select></div>
             <div class="field">
-                <label>Annee universitaire</label>
+                <label>{{ t('university_year') }}</label>
                 <select name="annee_universitaire">
                     {% for annee in [1, 2, 3, 4, 5] %}
                         <option value="{{ annee }}" {% if profil and profil.annee_universitaire == annee %}selected{% endif %}>{{ annee }}{% if annee == 1 %}ere{% else %}eme{% endif %} annee</option>
@@ -36,7 +35,7 @@
     </form>
 
     <section class="section compact-section">
-        <h2>Profils compatibles</h2>
+        <h2>{{ t('compatible_profiles') }}</h2>
         <div class="cards">
             {% for match in matches %}
                 <article class="card card-body">
@@ -51,7 +50,7 @@
     </section>
 
     <form class="form-card wide" action="{{ url_for('budget_colocation') }}" method="post">
-        <h2>Calculateur budget colocation</h2>
+        <h2>{{ t('roommate_budget_calculator') }}</h2>
         <div class="register-grid">
             <input name="loyer" type="number" placeholder="Loyer">
             <input name="charges" type="number" placeholder="Charges">

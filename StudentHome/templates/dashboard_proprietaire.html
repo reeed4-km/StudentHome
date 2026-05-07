@@ -83,24 +83,23 @@
     <h2>Demandes recues</h2>
     <div class="table-wrap">
         <table>
-            <thead><tr><th>Etudiant</th><th>Logement</th><th>Statut</th><th>Paiement</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Etudiant</th><th>Logement</th><th>Statut</th><th>Actions</th></tr></thead>
             <tbody>
                 {% for demande in demandes %}
                 <tr>
                     <td>{{ demande.etudiant.utilisateur.nom }}</td>
                     <td>{{ demande.logement.titre }}</td>
                     <td>{{ demande.statut_reservation }}</td>
-                    <td>{{ demande.statut_paiement }}</td>
                     <td class="table-actions">
                         <a class="btn btn-small" href="{{ url_for('accepter_reservation', id=demande.id) }}">Accepter</a>
                         <a class="btn btn-small btn-danger" href="{{ url_for('refuser_reservation', id=demande.id) }}">Refuser</a>
-                        {% if demande.statut_reservation.startswith('Fonds') %}
+                        {% if demande.statut_reservation.startswith('Conf') %}
                             <a class="btn btn-small btn-secondary" href="{{ url_for('confirmer_conformite', id=demande.id) }}">Conforme</a>
                         {% endif %}
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="5">Aucune demande.</td></tr>
+                <tr><td colspan="4">Aucune demande.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
