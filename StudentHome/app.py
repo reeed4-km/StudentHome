@@ -713,12 +713,14 @@ def inject_language_helpers():
         lang = "fr"
 
     def fix_text_encoding(value):
-        if not isinstance(value, str) or not any(marker in value for marker in ("Ã", "â", "Ø", "Ù")):
+        if not isinstance(value, str) or not any(marker in value for marker in ("Ã", "â", "Ø", "Ù", "Ă", "Â")):
             return value
-        try:
-            return value.encode("latin1").decode("utf-8")
-        except UnicodeError:
-            return value
+        for encoding in ("cp1252", "latin1"):
+            try:
+                return value.encode(encoding).decode("utf-8")
+            except UnicodeError:
+                continue
+        return value
 
     def t(key):
         value = TRANSLATIONS.get(lang, TRANSLATIONS["fr"]).get(key, TRANSLATIONS["fr"].get(key, key))
@@ -938,30 +940,8 @@ def role_required(role):
 
 
 def seed_database():
-    if Utilisateur.query.first():
-        return
-
-    etu_user = Utilisateur(
-        nom="Sara El Amrani",
-        email="sara@uca.ac.ma",
-        mot_de_passe=generate_password_hash("Etudiant@123"),
-        role="etudiant",
-    )
-    prop_user = Utilisateur(
-        nom="Youssef Benali",
-        email="youssef@mail.com",
-        mot_de_passe=generate_password_hash("test123"),
-        role="proprietaire",
-    )
-    db.session.add_all([etu_user, prop_user])
-    db.session.flush()
-
-    etudiant = Etudiant(utilisateur_id=etu_user.id, faculte_uca="FSSM", numero_etudiant="G123456789")
-    proprietaire = Proprietaire(utilisateur_id=prop_user.id, telephone="0612345678", est_verifie=True)
-    db.session.add_all([etudiant, proprietaire])
-    db.session.flush()
-
-    db.session.commit()
+    # Pas de comptes de demonstration : les statistiques doivent refleter les vrais inscrits.
+    return
 
 
 def update_demo_student_account():
@@ -995,6 +975,50 @@ def remove_demo_housing():
             db.session.delete(logement)
             deleted = True
     if deleted:
+        db.session.commit()
+
+
+def delete_logement_tree(logement):
+    Favori.query.filter_by(logement_id=logement.id).delete()
+    Message.query.filter_by(logement_id=logement.id).delete()
+    Visite.query.filter_by(logement_id=logement.id).delete()
+    Incident.query.filter_by(logement_id=logement.id).delete()
+    InventaireItem.query.filter_by(logement_id=logement.id).delete()
+    Avis.query.filter_by(logement_id=logement.id).delete()
+    Reservation.query.filter_by(logement_id=logement.id).delete()
+    db.session.delete(logement)
+
+
+def remove_demo_users():
+    demo_users = Utilisateur.query.filter(
+        Utilisateur.email.in_(["sara@uca.ac.ma", "youssef@mail.com"])
+    ).all()
+    changed = False
+    for user in demo_users:
+        if user.proprietaire:
+            for logement in list(user.proprietaire.logements):
+                delete_logement_tree(logement)
+            Message.query.filter_by(proprietaire_id=user.proprietaire.id).delete()
+            Visite.query.filter_by(proprietaire_id=user.proprietaire.id).delete()
+            db.session.delete(user.proprietaire)
+            changed = True
+        if user.etudiant:
+            etudiant_id = user.etudiant.id
+            Favori.query.filter_by(utilisateur_id=user.id).delete()
+            Message.query.filter_by(etudiant_id=etudiant_id).delete()
+            Message.query.filter_by(expediteur_id=user.id).delete()
+            Visite.query.filter_by(etudiant_id=etudiant_id).delete()
+            Incident.query.filter_by(etudiant_id=etudiant_id).delete()
+            Avis.query.filter_by(etudiant_id=etudiant_id).delete()
+            Reservation.query.filter_by(etudiant_id=etudiant_id).delete()
+            profil = ProfilColocation.query.filter_by(etudiant_id=etudiant_id).first()
+            if profil:
+                db.session.delete(profil)
+            db.session.delete(user.etudiant)
+            changed = True
+        db.session.delete(user)
+        changed = True
+    if changed:
         db.session.commit()
 
 
@@ -1080,8 +1104,8 @@ def init_database():
     ensure_logement_type_column()
     ensure_logement_availability_date_column()
     seed_database()
-    update_demo_student_account()
     remove_demo_housing()
+    remove_demo_users()
     sync_admin_account()
     ensure_non_admin_roles()
 
@@ -1534,7 +1558,7 @@ def logements():
         "Route de Casablanca",
         "Targa",
     ]
-    types_logement = ["Studio", "Chambre", "Appartement", "Colocation", "Maison", "RÃ©sidence Ã©tudiante"]
+    types_logement = ["Studio", "Chambre", "Appartement", "Colocation", "Maison", "Residence etudiante"]
     logements_liste = query.all()
     distances = {}
     if faculte in FACULTES_UCA:
