@@ -37,6 +37,27 @@ Lien direct nommé :
 http://127.0.0.1:5000/studenthome-marrakech
 ```
 
+## Verification email et SMS
+
+StudentHome ne montre jamais les codes de verification dans l'interface. En mode developpement, si aucun service d'envoi n'est configure, les codes sont seulement ecrits dans le terminal Flask.
+
+Variables email SMTP :
+
+```text
+STUDENTHOME_SMTP_HOST=smtp.gmail.com
+STUDENTHOME_SMTP_PORT=587
+STUDENTHOME_SMTP_USER=votre_email@gmail.com
+STUDENTHOME_SMTP_PASSWORD=mot_de_passe_application
+STUDENTHOME_SMTP_SENDER=votre_email@gmail.com
+```
+
+Variables SMS, selon le fournisseur choisi :
+
+```text
+STUDENTHOME_SMS_URL=https://api.votre-fournisseur-sms.com/send
+STUDENTHOME_SMS_API_KEY=votre_cle_api
+```
+
 ## AccÃ¨s depuis Internet
 
 Pour ouvrir StudentHome depuis n'importe quel appareil, mÃªme hors du mÃªme Wi-Fi, l'application doit Ãªtre hÃ©bergÃ©e en ligne.

@@ -404,6 +404,10 @@ textarea {
   gap: 10px;
 }
 
+.inline-delete-form {
+  margin: 0;
+}
+
 .cards {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -855,6 +859,17 @@ textarea {
 
 .favorite-star.is-active svg {
   fill: currentColor;
+}
+
+.favorite-star.is-loading {
+  pointer-events: none;
+  opacity: 0.72;
+}
+
+.card.is-removing {
+  opacity: 0;
+  transform: scale(0.98);
+  transition: opacity 180ms ease, transform 180ms ease;
 }
 
 .detail-favorite {

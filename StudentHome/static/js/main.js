@@ -52,6 +52,55 @@ if (filterToggle && advancedFilters) {
   });
 }
 
+document.querySelectorAll(".favorite-star").forEach((favoriteButton) => {
+  favoriteButton.addEventListener("click", async (event) => {
+    const favoriteUrl = favoriteButton.dataset.favoriteUrl;
+    if (!favoriteUrl) {
+      return;
+    }
+
+    event.preventDefault();
+    favoriteButton.classList.add("is-loading");
+
+    try {
+      const response = await fetch(favoriteUrl, {
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+      });
+
+      if (response.redirected) {
+        window.location.href = response.url;
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error("Favorite request failed");
+      }
+
+      const data = await response.json();
+      const label = data.active ? "Retirer des favoris" : "Ajouter aux favoris";
+      favoriteButton.classList.toggle("is-active", Boolean(data.active));
+      favoriteButton.setAttribute("aria-label", label);
+      favoriteButton.setAttribute("title", label);
+      const labelText = favoriteButton.querySelector("span");
+      if (labelText) {
+        labelText.textContent = label;
+      }
+
+      if (!data.active && window.location.pathname.includes("/favoris")) {
+        const card = favoriteButton.closest(".card");
+        if (card) {
+          card.classList.add("is-removing");
+          setTimeout(() => card.remove(), 180);
+        }
+      }
+    } catch (error) {
+      window.location.href = favoriteUrl;
+    } finally {
+      favoriteButton.classList.remove("is-loading");
+    }
+  });
+});
+
 const loginIdentifier = document.querySelector(".login-identifiant");
 const loginPassword = document.querySelector(".login-password");
 

@@ -22,10 +22,15 @@
                 </select>
             </div>
             <div class="field"><label>Fumeur</label><select name="fumeur"><option value="non">Non</option><option value="oui" {% if profil and profil.fumeur == 'oui' %}selected{% endif %}>Oui</option></select></div>
-            <div class="field"><label>Sommeil</label><select name="sommeil"><option value="normal">Normal</option><option value="tot" {% if profil and profil.sommeil == 'tot' %}selected{% endif %}>Se couche tôt</option><option value="tard" {% if profil and profil.sommeil == 'tard' %}selected{% endif %}>Se couche tard</option></select></div>
-            <div class="field"><label>Propreté</label><select name="proprete"><option value="normal">Normal</option><option value="elevee" {% if profil and profil.proprete == 'elevee' %}selected{% endif %}>Très propre</option></select></div>
-            <div class="field"><label>Sérieux</label><select name="serieux"><option value="normal">Normal</option><option value="calme" {% if profil and profil.serieux == 'calme' %}selected{% endif %}>Calme et sérieux</option></select></div>
-            <div class="field field-wide"><label>Langue</label><input type="text" name="langue" value="{{ profil.langue if profil else 'francais' }}"></div>
+            <div class="field"><label>Proprete</label><select name="proprete"><option value="normal">Normal</option><option value="elevee" {% if profil and profil.proprete == 'elevee' %}selected{% endif %}>Tres propre</option></select></div>
+            <div class="field">
+                <label>Annee universitaire</label>
+                <select name="annee_universitaire">
+                    {% for annee in [1, 2, 3, 4, 5] %}
+                        <option value="{{ annee }}" {% if profil and profil.annee_universitaire == annee %}selected{% endif %}>{{ annee }}{% if annee == 1 %}ere{% else %}eme{% endif %} annee</option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
         <button class="btn btn-primary full" type="submit">Enregistrer mon profil</button>
     </form>
@@ -36,11 +41,11 @@
             {% for match in matches %}
                 <article class="card card-body">
                     <h3>{{ match.profil.etudiant.utilisateur.nom }}</h3>
-                    <p>{{ match.profil.faculte }} · Budget {{ match.profil.budget|int }} DH</p>
+                    <p>{{ match.profil.faculte }} - {{ match.profil.annee_universitaire }}{% if match.profil.annee_universitaire == 1 %}ere{% else %}eme{% endif %} annee - Budget {{ match.profil.budget|int }} DH</p>
                     <strong>{{ match.score }}% compatible</strong>
                 </article>
             {% else %}
-                <div class="empty-state wide-empty"><p>Crée ton profil pour voir des suggestions compatibles.</p></div>
+                <div class="empty-state wide-empty"><p>Cree ton profil pour voir des suggestions compatibles.</p></div>
             {% endfor %}
         </div>
     </section>
@@ -51,7 +56,7 @@
             <input name="loyer" type="number" placeholder="Loyer">
             <input name="charges" type="number" placeholder="Charges">
             <input name="internet" type="number" placeholder="Internet">
-            <input name="eau" type="number" placeholder="Eau / électricité">
+            <input name="eau" type="number" placeholder="Eau / electricite">
             <input name="personnes" type="number" min="1" placeholder="Nombre de personnes">
         </div>
         <button class="btn btn-secondary full" type="submit">Calculer</button>

@@ -1,11 +1,27 @@
 {% extends "base.html" %}
-{% block title %}Dashboard propriétaire - StudentHome{% endblock %}
+{% block title %}Dashboard proprietaire - StudentHome{% endblock %}
 {% block content %}
 <section class="section">
     <div class="section-title">
-        <h1>Espace propriétaire</h1>
+        <h1>Espace proprietaire</h1>
         <a class="btn btn-primary" href="{{ url_for('ajouter_annonce') }}">Ajouter une annonce</a>
     </div>
+
+    <div class="stats-grid">
+        <article class="stat-card">
+            <strong>{{ total_vues }}</strong>
+            <span>Consultations totales</span>
+        </article>
+        <article class="stat-card">
+            <strong>{{ annonce_plus_vue.vues if annonce_plus_vue else 0 }}</strong>
+            <span>Annonce la plus consultee</span>
+        </article>
+        <article class="stat-card">
+            <strong>{{ logements|length }}</strong>
+            <span>Annonces publiees</span>
+        </article>
+    </div>
+
     <div class="cards">
         {% for logement in logements %}
         <article class="card">
@@ -17,9 +33,9 @@
             <div class="card-body">
                 <h3>{{ logement.titre }}</h3>
                 <p>{{ logement.prix|int }} DH - {{ logement.quartier }}</p>
-                <p>{{ logement.vues or 0 }} vues · {{ logement.favoris|length }} favoris · {{ logement.visites|length }} visites</p>
+                <p><strong>{{ logement.vues or 0 }} consultations</strong> - {{ logement.favoris|length }} favoris - {{ logement.visites|length }} visites</p>
                 {% if logement.date_disponibilite %}
-                    <p class="availability-date">Disponible à partir du {{ logement.date_disponibilite }}</p>
+                    <p class="availability-date">Disponible a partir du {{ logement.date_disponibilite }}</p>
                 {% endif %}
                 <p class="status {{ 'ok' if logement.est_disponible else 'off' }}">
                     {{ 'Visible' if logement.est_disponible else 'Indisponible' }}
@@ -27,7 +43,9 @@
                 <div class="table-actions">
                     <a class="btn btn-small" href="{{ url_for('modifier_annonce', id=logement.id) }}">Modifier</a>
                     <a class="btn btn-small btn-secondary" href="{{ url_for('inventaire', id=logement.id) }}">Inventaire</a>
-                    <a class="btn btn-small btn-danger" href="{{ url_for('supprimer_annonce', id=logement.id) }}">Supprimer</a>
+                    <form class="inline-delete-form" method="post" action="{{ url_for('supprimer_annonce', id=logement.id) }}">
+                        <button class="btn btn-small btn-danger" type="submit">Supprimer</button>
+                    </form>
                 </div>
             </div>
         </article>
@@ -37,21 +55,21 @@
     <h2>Calendrier des visites</h2>
     <div class="table-wrap">
         <table>
-            <thead><tr><th>Étudiant</th><th>Logement</th><th>Date</th><th>Statut</th></tr></thead>
+            <thead><tr><th>Etudiant</th><th>Logement</th><th>Date</th><th>Statut</th></tr></thead>
             <tbody>
                 {% for visite in visites %}
                 <tr><td>{{ visite.etudiant.utilisateur.nom }}</td><td>{{ visite.logement.titre }}</td><td>{{ visite.date_visite }}</td><td>{{ visite.statut }}</td></tr>
                 {% else %}
-                <tr><td colspan="4">Aucune visite planifiée.</td></tr>
+                <tr><td colspan="4">Aucune visite planifiee.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 
-    <h2>Incidents signalés</h2>
+    <h2>Incidents signales</h2>
     <div class="table-wrap">
         <table>
-            <thead><tr><th>Logement</th><th>Étudiant</th><th>Description</th><th>Statut</th></tr></thead>
+            <thead><tr><th>Logement</th><th>Etudiant</th><th>Description</th><th>Statut</th></tr></thead>
             <tbody>
                 {% for incident in incidents %}
                 <tr><td>{{ incident.logement.titre }}</td><td>{{ incident.etudiant.utilisateur.nom }}</td><td>{{ incident.description }}</td><td>{{ incident.statut }}</td></tr>
@@ -62,10 +80,10 @@
         </table>
     </div>
 
-    <h2>Demandes reçues</h2>
+    <h2>Demandes recues</h2>
     <div class="table-wrap">
         <table>
-            <thead><tr><th>Étudiant</th><th>Logement</th><th>Statut</th><th>Paiement</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Etudiant</th><th>Logement</th><th>Statut</th><th>Paiement</th><th>Actions</th></tr></thead>
             <tbody>
                 {% for demande in demandes %}
                 <tr>
@@ -76,7 +94,7 @@
                     <td class="table-actions">
                         <a class="btn btn-small" href="{{ url_for('accepter_reservation', id=demande.id) }}">Accepter</a>
                         <a class="btn btn-small btn-danger" href="{{ url_for('refuser_reservation', id=demande.id) }}">Refuser</a>
-                        {% if demande.statut_reservation == 'Fonds en séquestre' %}
+                        {% if demande.statut_reservation.startswith('Fonds') %}
                             <a class="btn btn-small btn-secondary" href="{{ url_for('confirmer_conformite', id=demande.id) }}">Conforme</a>
                         {% endif %}
                     </td>

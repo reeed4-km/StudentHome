@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Verification - StudentHome{% endblock %}
+{% block content %}
+<section class="auth">
+    <form class="form-card login-card" method="post">
+        <div class="register-head">
+            <div>
+                <p class="tag">Verification</p>
+                <h1>Valider votre compte</h1>
+            </div>
+        </div>
+
+        <p>Nous avons envoye un code a votre email {{ pending.email }}{% if pending.role == 'proprietaire' %} et un code SMS a votre telephone{% endif %}.</p>
+
+        <div class="login-grid">
+            <div class="field {% if pending.role != 'proprietaire' %}field-wide{% endif %}">
+                <label>Code email</label>
+                <input type="text" name="email_code" placeholder="Code recu par email" required>
+            </div>
+            {% if pending.role == 'proprietaire' %}
+                <div class="field">
+                    <label>Code SMS</label>
+                    <input type="text" name="phone_code" placeholder="Code recu par SMS" required>
+                </div>
+            {% endif %}
+        </div>
+
+        <button class="btn btn-primary full login-submit" type="submit">Verifier et creer le compte</button>
+        <p class="form-help">Pour la production, configurez SMTP/SMS. En mode developpement, les codes sont dans le terminal du serveur, jamais affiches sur la page.</p>
+    </form>
+</section>
+{% endblock %}

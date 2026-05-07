@@ -24,7 +24,7 @@
         <div class="table-actions">
             <a class="btn btn-primary full" href="{{ url_for('detail_logement', id=logement.id) }}">{{ t('view_details') }}</a>
             {% if current_user.is_authenticated and current_user.role == 'etudiant' %}
-                <a class="favorite-star {{ 'is-active' if favoris_ids is defined and logement.id in favoris_ids else '' }}" href="{{ url_for('toggle_favori', id=logement.id) }}" aria-label="{{ 'Retirer des favoris' if favoris_ids is defined and logement.id in favoris_ids else 'Ajouter aux favoris' }}" title="{{ 'Retirer des favoris' if favoris_ids is defined and logement.id in favoris_ids else 'Ajouter aux favoris' }}">
+                <a class="favorite-star {{ 'is-active' if favoris_ids is defined and logement.id in favoris_ids else '' }}" href="{{ url_for('toggle_favori', id=logement.id) }}" data-favorite-url="{{ url_for('toggle_favori', id=logement.id) }}" aria-label="{{ 'Retirer des favoris' if favoris_ids is defined and logement.id in favoris_ids else 'Ajouter aux favoris' }}" title="{{ 'Retirer des favoris' if favoris_ids is defined and logement.id in favoris_ids else 'Ajouter aux favoris' }}">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                         <path d="m12 3.7 2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 17l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8L12 3.7Z"></path>
                     </svg>

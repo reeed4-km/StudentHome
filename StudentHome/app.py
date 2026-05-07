@@ -3,10 +3,14 @@ import random
 import re
 import io
 import math
+import smtplib
+import urllib.parse
+import urllib.request
 from datetime import date, datetime
+from email.message import EmailMessage
 from functools import wraps
 
-from flask import Flask, flash, redirect, render_template, request, send_file, session, url_for
+from flask import Flask, flash, jsonify, redirect, render_template, request, send_file, session, url_for
 from flask_login import LoginManager, UserMixin, current_user, login_required, login_user, logout_user
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import or_, text
@@ -563,6 +567,7 @@ class ProfilColocation(db.Model):
     proprete = db.Column(db.String(40), default="normal")
     serieux = db.Column(db.String(40), default="normal")
     langue = db.Column(db.String(40), default="francais")
+    annee_universitaire = db.Column(db.Integer, default=1)
 
     etudiant = db.relationship("Etudiant", backref="profil_colocation", uselist=False)
 
@@ -655,6 +660,53 @@ def password_errors(password):
     return errors
 
 
+def generate_verification_code():
+    return str(random.randint(100000, 999999))
+
+
+def send_email_code(destination, code, subject="Code de verification StudentHome"):
+    smtp_host = os.environ.get("STUDENTHOME_SMTP_HOST")
+    smtp_port = int(os.environ.get("STUDENTHOME_SMTP_PORT", "587"))
+    smtp_user = os.environ.get("STUDENTHOME_SMTP_USER")
+    smtp_password = os.environ.get("STUDENTHOME_SMTP_PASSWORD")
+    smtp_sender = os.environ.get("STUDENTHOME_SMTP_SENDER", smtp_user or "noreply@studenthome.local")
+
+    if not smtp_host or not smtp_user or not smtp_password:
+        app.logger.warning("DEV EMAIL CODE for %s: %s", destination, code)
+        return False
+
+    message = EmailMessage()
+    message["Subject"] = subject
+    message["From"] = smtp_sender
+    message["To"] = destination
+    message.set_content(f"Votre code de verification StudentHome est : {code}")
+
+    with smtplib.SMTP(smtp_host, smtp_port) as server:
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.send_message(message)
+    return True
+
+
+def send_sms_code(destination, code):
+    provider_url = os.environ.get("STUDENTHOME_SMS_URL")
+    api_key = os.environ.get("STUDENTHOME_SMS_API_KEY")
+
+    if not provider_url or not api_key:
+        app.logger.warning("DEV SMS CODE for %s: %s", destination, code)
+        return False
+
+    query = urllib.parse.urlencode({"to": destination, "message": f"Code StudentHome : {code}", "key": api_key})
+    with urllib.request.urlopen(f"{provider_url}?{query}", timeout=10) as response:
+        return 200 <= response.status < 300
+
+
+def send_verification_code(method, destination, code):
+    if method == "sms":
+        return send_sms_code(destination, code)
+    return send_email_code(destination, code)
+
+
 def safe_next_url(default_endpoint="index"):
     # On accepte seulement les redirections internes pour eviter les liens externes dangereux.
     next_url = request.form.get("next") or request.args.get("next")
@@ -730,14 +782,18 @@ def distance_to_faculty(logement, faculte_code):
 def recommendation_score(logement, budget=None, faculte_code=None, type_pref="", colocation=False):
     score = 0
     if budget:
-        score += 35 if logement.prix <= budget else max(0, 20 - int((logement.prix - budget) / 100))
+        ecart_budget = abs(logement.prix - budget)
+        if logement.prix <= budget:
+            score += max(0, 45 - int(ecart_budget / 100))
+        else:
+            score += max(0, 20 - int((logement.prix - budget) / 100))
     if type_pref and logement.type_logement == type_pref:
         score += 20
     if colocation and logement.est_colocation:
         score += 15
     distance = distance_to_faculty(logement, faculte_code) if faculte_code else None
     if distance is not None:
-        score += max(0, 30 - int(distance * 8))
+        score += max(0, 45 - int(distance * 10))
     return score
 
 
@@ -885,12 +941,21 @@ def ensure_logement_advanced_columns():
     db.session.commit()
 
 
+def ensure_colocation_year_column():
+    columns = db.session.execute(text("PRAGMA table_info(profil_colocation)")).fetchall()
+    column_names = [column[1] for column in columns]
+    if "annee_universitaire" not in column_names:
+        db.session.execute(text("ALTER TABLE profil_colocation ADD COLUMN annee_universitaire INTEGER DEFAULT 1"))
+        db.session.commit()
+
+
 def init_database():
     # La base est créée automatiquement au lancement.
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     db.create_all()
     ensure_user_profile_photo_column()
     ensure_logement_advanced_columns()
+    ensure_colocation_year_column()
     ensure_logement_type_column()
     ensure_logement_availability_date_column()
     seed_database()
@@ -919,7 +984,12 @@ def ensure_logement_availability_date_column():
 
 @app.route("/")
 def index():
-    logements = Logement.query.filter_by(est_valide=True, est_bloque=False).limit(3).all()
+    logements = (
+        Logement.query.filter_by(est_valide=True, est_bloque=False)
+        .order_by(Logement.vues.desc(), Logement.id.desc())
+        .limit(3)
+        .all()
+    )
     return render_template("index.html", logements=logements)
 
 
@@ -989,38 +1059,44 @@ def register():
             flash("Cet email est déjà utilisé.", "error")
             return redirect(url_for("register"))
 
-        utilisateur = Utilisateur(
-            nom=nom,
-            email=email,
-            mot_de_passe=generate_password_hash(password),
-            role=role,
-        )
-        db.session.add(utilisateur)
-        db.session.flush()
+        role_data = {}
 
         if role == "etudiant":
             numero = request.form.get("numero_etudiant", "").strip().upper()
             faculte = request.form.get("faculte_uca", "").strip()
             if not is_valid_massar(numero):
                 flash("Code Massar invalide. Exemple attendu : G123456789.", "error")
-                db.session.rollback()
                 return redirect(url_for("register"))
             if Etudiant.query.filter_by(numero_etudiant=numero).first():
                 flash("Ce code Massar est déjà utilisé.", "error")
-                db.session.rollback()
                 return redirect(url_for("register"))
-            db.session.add(Etudiant(utilisateur_id=utilisateur.id, faculte_uca=faculte, numero_etudiant=numero))
+            role_data = {"faculte_uca": faculte, "numero_etudiant": numero}
         elif role == "proprietaire":
-            db.session.add(
-                Proprietaire(
-                    utilisateur_id=utilisateur.id,
-                    telephone=request.form.get("telephone", "").strip(),
-                    est_verifie=False,
-                )
-            )
+            telephone = request.form.get("telephone", "").strip()
+            if not telephone:
+                flash("Le numero de telephone est obligatoire.", "error")
+                return redirect(url_for("register"))
+            role_data = {"telephone": telephone}
 
-        db.session.commit()
-        login_user(utilisateur)
+        email_code = generate_verification_code()
+        phone_code = generate_verification_code() if role == "proprietaire" else None
+        session["pending_registration"] = {
+            "nom": nom,
+            "email": email,
+            "password_hash": generate_password_hash(password),
+            "role": role,
+            "role_data": role_data,
+            "next": safe_next_url("index"),
+        }
+        session["pending_email_code"] = email_code
+        session["pending_phone_code"] = phone_code
+        send_email_code(email, email_code, "Verification de votre compte StudentHome")
+        if role == "proprietaire":
+            send_sms_code(role_data["telephone"], phone_code)
+            flash("Un code a ete envoye a votre email et un autre a votre telephone.", "success")
+        else:
+            flash("Un code de verification a ete envoye a votre email.", "success")
+        return redirect(url_for("verifier_compte"))
         flash("Compte créé avec succès. Vous êtes maintenant connecté.", "success")
         return redirect(safe_next_url("index"))
 
@@ -1028,6 +1104,58 @@ def register():
     if selected_role not in ["etudiant", "proprietaire"]:
         selected_role = "etudiant"
     return render_template("register.html", next_url=request.args.get("next", ""), selected_role=selected_role)
+
+
+@app.route("/verifier-compte", methods=["GET", "POST"])
+def verifier_compte():
+    pending = session.get("pending_registration")
+    if not pending:
+        flash("Commencez par remplir le formulaire d'inscription.", "error")
+        return redirect(url_for("choisir_role"))
+
+    if request.method == "POST":
+        email_code = request.form.get("email_code", "").strip()
+        phone_code = request.form.get("phone_code", "").strip()
+        if email_code != session.get("pending_email_code"):
+            flash("Code email incorrect.", "error")
+            return redirect(url_for("verifier_compte"))
+        if pending["role"] == "proprietaire" and phone_code != session.get("pending_phone_code"):
+            flash("Code telephone incorrect.", "error")
+            return redirect(url_for("verifier_compte"))
+
+        utilisateur = Utilisateur(
+            nom=pending["nom"],
+            email=pending["email"],
+            mot_de_passe=pending["password_hash"],
+            role=pending["role"],
+        )
+        db.session.add(utilisateur)
+        db.session.flush()
+        if pending["role"] == "etudiant":
+            db.session.add(
+                Etudiant(
+                    utilisateur_id=utilisateur.id,
+                    faculte_uca=pending["role_data"]["faculte_uca"],
+                    numero_etudiant=pending["role_data"]["numero_etudiant"],
+                )
+            )
+        elif pending["role"] == "proprietaire":
+            db.session.add(
+                Proprietaire(
+                    utilisateur_id=utilisateur.id,
+                    telephone=pending["role_data"]["telephone"],
+                    est_verifie=True,
+                )
+            )
+        db.session.commit()
+        session.pop("pending_registration", None)
+        session.pop("pending_email_code", None)
+        session.pop("pending_phone_code", None)
+        login_user(utilisateur)
+        flash("Compte verifie et cree avec succes.", "success")
+        return redirect(pending.get("next") or url_for("index"))
+
+    return render_template("verifier_compte.html", pending=pending)
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -1099,7 +1227,8 @@ def mot_de_passe_oublie():
         session["reset_destination"] = destination
 
         canal = "SMS" if methode == "sms" else "Gmail"
-        flash(f"Code de vérification simulé envoyé par {canal} vers {destination} : {code}", "success")
+        send_verification_code(methode, destination, code)
+        flash(f"Code de verification envoye par {canal} vers {destination}.", "success")
         return redirect(url_for("reinitialiser_mot_de_passe"))
 
     return render_template("mot_de_passe_oublie.html")
@@ -1299,12 +1428,21 @@ def logements():
                 if distances.get(logement.id) is not None and distances[logement.id] <= max_value
             ]
 
-    budget_value = float(budget) if budget else None
-    recommandations = sorted(
-        Logement.query.filter_by(est_valide=True, est_bloque=False).all(),
-        key=lambda logement: recommendation_score(logement, budget_value, faculte, type_logement, colocation == "1"),
-        reverse=True,
-    )[:3]
+    budget_value = float(budget) if budget else (float(prix_max) if prix_max else None)
+    reco_faculte = faculte
+    if current_user.is_authenticated and current_user.role == "etudiant":
+        reco_faculte = faculte or current_user.etudiant.faculte_uca
+        if budget_value is None and current_user.etudiant.profil_colocation:
+            budget_value = current_user.etudiant.profil_colocation.budget or None
+
+    recommandations_source = Logement.query.filter_by(est_valide=True, est_bloque=False).all()
+    recommandations = []
+    if budget_value or reco_faculte:
+        recommandations = sorted(
+            recommandations_source,
+            key=lambda logement: recommendation_score(logement, budget_value, reco_faculte, type_logement, colocation == "1"),
+            reverse=True,
+        )[:3]
     favoris_ids = set()
     if current_user.is_authenticated:
         favoris_ids = {favori.logement_id for favori in Favori.query.filter_by(utilisateur_id=current_user.id).all()}
@@ -1355,7 +1493,10 @@ def detail_logement(id):
         db.session.commit()
         flash("Demande de réservation envoyée au propriétaire.", "success")
         return redirect(url_for("reservations"))
-    return render_template("detail_logement.html", logement=logement)
+    favori_actif = False
+    if current_user.is_authenticated and current_user.role == "etudiant":
+        favori_actif = Favori.query.filter_by(utilisateur_id=current_user.id, logement_id=logement.id).first() is not None
+    return render_template("detail_logement.html", logement=logement, favori_actif=favori_actif)
 
 
 @app.route("/contacter-proprietaire/<int:id>", methods=["POST"])
@@ -1393,11 +1534,17 @@ def toggle_favori(id):
     favori = Favori.query.filter_by(utilisateur_id=current_user.id, logement_id=logement.id).first()
     if favori:
         db.session.delete(favori)
-        flash("Annonce retiree des favoris.", "success")
+        active = False
     else:
         db.session.add(Favori(utilisateur_id=current_user.id, logement_id=logement.id))
-        flash("Annonce ajoutee aux favoris.", "success")
+        active = True
     db.session.commit()
+
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        count = Favori.query.filter_by(logement_id=logement.id).count()
+        return jsonify({"active": active, "count": count})
+
+    flash("Annonce ajoutee aux favoris." if active else "Annonce retiree des favoris.", "success")
     return redirect(request.referrer or url_for("logements"))
 
 
@@ -1685,7 +1832,13 @@ def dashboard_etudiant():
 @login_required
 @role_required("proprietaire")
 def dashboard_proprietaire():
-    logements_prop = Logement.query.filter_by(proprietaire_id=current_user.proprietaire.id).all()
+    logements_prop = (
+        Logement.query.filter_by(proprietaire_id=current_user.proprietaire.id)
+        .order_by(Logement.vues.desc(), Logement.id.desc())
+        .all()
+    )
+    total_vues = sum((logement.vues or 0) for logement in logements_prop)
+    annonce_plus_vue = logements_prop[0] if logements_prop else None
     demandes = (
         Reservation.query.join(Logement)
         .filter(Logement.proprietaire_id == current_user.proprietaire.id)
@@ -1702,6 +1855,8 @@ def dashboard_proprietaire():
     return render_template(
         "dashboard_proprietaire.html",
         logements=logements_prop,
+        total_vues=total_vues,
+        annonce_plus_vue=annonce_plus_vue,
         demandes=demandes,
         visites=visites,
         incidents=incidents,
@@ -1782,10 +1937,9 @@ def colocation():
         profil.budget = float(request.form.get("budget") or 0)
         profil.faculte = request.form.get("faculte", current_user.etudiant.faculte_uca)
         profil.fumeur = request.form.get("fumeur", "non")
-        profil.sommeil = request.form.get("sommeil", "normal")
         profil.proprete = request.form.get("proprete", "normal")
-        profil.serieux = request.form.get("serieux", "normal")
-        profil.langue = request.form.get("langue", "francais")
+        annee = int(request.form.get("annee_universitaire") or 1)
+        profil.annee_universitaire = min(max(annee, 1), 5)
         db.session.commit()
         flash("Profil colocation mis a jour.", "success")
         return redirect(url_for("colocation"))
@@ -1795,9 +1949,9 @@ def colocation():
     if profil:
         for autre in profils:
             score = 0
-            for champ in ["faculte", "fumeur", "sommeil", "proprete", "serieux", "langue"]:
+            for champ in ["faculte", "fumeur", "proprete", "annee_universitaire"]:
                 if getattr(profil, champ) == getattr(autre, champ):
-                    score += 15
+                    score += 18
             if profil.budget and autre.budget:
                 score += max(0, 25 - int(abs(profil.budget - autre.budget) / 100))
             matches.append({"profil": autre, "score": min(score, 100)})
@@ -1960,14 +2114,25 @@ def modifier_annonce(id):
     return render_template("ajouter_annonce.html", logement=logement)
 
 
-@app.route("/supprimer-annonce/<int:id>")
+@app.route("/supprimer-annonce/<int:id>", methods=["GET", "POST"])
 @login_required
 @role_required("proprietaire")
 def supprimer_annonce(id):
     logement = Logement.query.get_or_404(id)
-    if logement.proprietaire_id == current_user.proprietaire.id:
-        db.session.delete(logement)
-        db.session.commit()
+    if logement.proprietaire_id != current_user.proprietaire.id:
+        flash("Vous ne pouvez supprimer que vos annonces.", "error")
+        return redirect(url_for("dashboard_proprietaire"))
+
+    Favori.query.filter_by(logement_id=logement.id).delete()
+    Message.query.filter_by(logement_id=logement.id).delete()
+    Visite.query.filter_by(logement_id=logement.id).delete()
+    Incident.query.filter_by(logement_id=logement.id).delete()
+    InventaireItem.query.filter_by(logement_id=logement.id).delete()
+    Avis.query.filter_by(logement_id=logement.id).delete()
+    Reservation.query.filter_by(logement_id=logement.id).delete()
+    db.session.delete(logement)
+    db.session.commit()
+    if True:
         flash("Annonce supprimée.", "success")
     return redirect(url_for("dashboard_proprietaire"))
 
