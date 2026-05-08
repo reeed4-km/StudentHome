@@ -37,35 +37,6 @@ Lien direct nommé :
 http://127.0.0.1:5000/studenthome-marrakech
 ```
 
-## Verification email et SMS
-
-StudentHome ne montre jamais les codes de verification dans l'interface. Pour que les utilisateurs recoivent vraiment les codes par email, creez un fichier `.env` a la racine du projet avec les variables ci-dessous. Avec Gmail, il faut utiliser un mot de passe d'application, pas le mot de passe normal du compte.
-
-Si SMTP n'est pas configure, aucun compte public n'est cree : l'utilisateur doit recevoir le code par email et le saisir avant que son compte soit enregistre comme verifie.
-
-Variables email SMTP :
-
-```text
-MAIL_SERVER=smtp.gmail.com
-MAIL_PORT=587
-MAIL_USE_TLS=True
-MAIL_USERNAME=votre_email@gmail.com
-MAIL_PASSWORD=mot_de_passe_application
-MAIL_DEFAULT_SENDER=votre_email@gmail.com
-MAIL_TIMEOUT=10
-```
-
-Apres configuration SMTP, chaque nouvel utilisateur inscrit recoit automatiquement un email avec le formulaire Google Forms StudentHome. L'administrateur peut aussi renvoyer ce formulaire a tous les utilisateurs depuis le dashboard admin.
-
-Sur Render, ajoutez exactement ces variables dans `Environment` du service web, puis redeployez. Sans ces variables, Gmail ne pourra pas envoyer les codes et aucun nouveau compte ne sera cree.
-
-Variables SMS, selon le fournisseur choisi :
-
-```text
-STUDENTHOME_SMS_URL=https://api.votre-fournisseur-sms.com/send
-STUDENTHOME_SMS_API_KEY=votre_cle_api
-```
-
 ## AccÃ¨s depuis Internet
 
 Pour ouvrir StudentHome depuis n'importe quel appareil, mÃªme hors du mÃªme Wi-Fi, l'application doit Ãªtre hÃ©bergÃ©e en ligne.
