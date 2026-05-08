@@ -517,9 +517,6 @@ TRANSLATIONS = {
 app = Flask(__name__)
 app.config.from_object(Config)
 
-print("MAIL_USERNAME exists:", bool(app.config.get("MAIL_USERNAME")))
-print("MAIL_PASSWORD exists:", bool(app.config.get("MAIL_PASSWORD")))
-
 db = SQLAlchemy(app)
 mail = Mail() if Mail else None
 if mail:
@@ -528,6 +525,8 @@ login_manager = LoginManager(app)
 login_manager.login_view = "login"
 login_manager.login_message = "Connectez-vous pour continuer."
 app.jinja_env.filters["fix_encoding"] = fix_text_encoding
+app.logger.info("MAIL_USERNAME exists: %s", bool(app.config.get("MAIL_USERNAME")))
+app.logger.info("MAIL_PASSWORD exists: %s", bool(app.config.get("MAIL_PASSWORD")))
 
 
 class Utilisateur(UserMixin, db.Model):
@@ -825,6 +824,7 @@ def send_email_message(destination, subject, body):
         )
         return False
 
+    app.logger.info("Starting OTP email send")
     message = MailMessage(
         subject=subject,
         sender=sender,
@@ -834,9 +834,10 @@ def send_email_message(destination, subject, body):
 
     try:
         mail.send(message)
+        app.logger.info("OTP email sent successfully")
         return True
     except Exception as exc:
-        app.logger.exception("Erreur envoi email vers %s: %s", destination, exc.__class__.__name__)
+        app.logger.error("OTP email failed: %s", exc, exc_info=True)
         return False
 
 
@@ -1356,19 +1357,23 @@ def register():
             "next": safe_next_url("index"),
         }
 
-        utilisateur = create_user_from_registration(pending, email_verifie=(role == "admin"))
-        set_user_otp(utilisateur, email_code, reset_resend_count=True)
-
         email_sent = send_email_code(email, email_code, "Verification de votre compte StudentHome")
         if not email_sent:
-            db.session.rollback()
             flash("Email non envoye : configurez SMTP dans Render avant d'autoriser les inscriptions. Aucun compte n'a ete cree.", "error")
             return redirect(url_for("register", role=role, next=request.form.get("next", "")))
 
-        db.session.commit()
-        session["verify_user_id"] = utilisateur.id
-        session["verify_next"] = pending["next"]
-        session["pending_phone_code"] = phone_code
+        try:
+            utilisateur = create_user_from_registration(pending, email_verifie=(role == "admin"))
+            set_user_otp(utilisateur, email_code, reset_resend_count=True)
+            db.session.commit()
+            session["verify_user_id"] = utilisateur.id
+            session["verify_next"] = pending["next"]
+            session["pending_phone_code"] = phone_code
+        except Exception as exc:
+            db.session.rollback()
+            app.logger.error("Erreur creation compte apres envoi OTP: %s", exc, exc_info=True)
+            flash("Impossible de creer le compte pour le moment. Reessayez dans quelques instants.", "error")
+            return redirect(url_for("register", role=role, next=request.form.get("next", "")))
 
         if role == "proprietaire":
             phone_sent = send_sms_code(role_data["telephone"], phone_code)
@@ -2480,7 +2485,7 @@ with app.app_context():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    debug_mode = os.environ.get("FLASK_DEBUG", "1") == "1"
+    debug_mode = os.environ.get("FLASK_DEBUG", "0") == "1"
     app.run(host="0.0.0.0", port=port, debug=debug_mode)
 
 

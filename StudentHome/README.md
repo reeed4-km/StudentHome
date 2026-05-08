@@ -52,6 +52,7 @@ MAIL_USE_TLS=True
 MAIL_USERNAME=votre_email@gmail.com
 MAIL_PASSWORD=mot_de_passe_application
 MAIL_DEFAULT_SENDER=votre_email@gmail.com
+MAIL_TIMEOUT=10
 ```
 
 Apres configuration SMTP, chaque nouvel utilisateur inscrit recoit automatiquement un email avec le formulaire Google Forms StudentHome. L'administrateur peut aussi renvoyer ce formulaire a tous les utilisateurs depuis le dashboard admin.
