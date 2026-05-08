@@ -122,11 +122,23 @@ textarea {
 }
 
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   color: var(--blue);
   font-family: var(--font-heading);
   font-size: clamp(18px, 2vw, 24px);
   font-weight: 800;
   line-height: 1;
+}
+
+.brand-logo {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.14);
 }
 
 .nav-public-link,

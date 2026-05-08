@@ -8,9 +8,12 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <button class="menu-toggle side-menu-toggle" type="button" aria-label="Menu">☰</button>
+    <button class="menu-toggle side-menu-toggle" type="button" aria-label="Menu">&#9776;</button>
     <aside class="sidebar-nav">
-        <a class="brand sidebar-brand" href="{{ url_for('studenthome_marrakech') }}">StudentHome</a>
+        <a class="brand sidebar-brand" href="{{ url_for('studenthome_marrakech') }}">
+            <img class="brand-logo" src="{{ url_for('static', filename='images/studenthome-logo-symbol.jpg') }}" alt="StudentHome">
+            <span>StudentHome</span>
+        </a>
         <nav class="side-links" aria-label="Navigation principale">
             <a href="{{ url_for('studenthome_marrakech') }}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9Z"></path></svg>
