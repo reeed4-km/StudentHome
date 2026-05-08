@@ -750,34 +750,6 @@ def password_errors(password):
     return errors
 
 
-def create_user_from_registration(pending):
-    utilisateur = Utilisateur(
-        nom=pending["nom"],
-        email=pending["email"],
-        mot_de_passe=pending["password_hash"],
-        role=pending["role"],
-    )
-    db.session.add(utilisateur)
-    db.session.flush()
-    if pending["role"] == "etudiant":
-        db.session.add(
-            Etudiant(
-                utilisateur_id=utilisateur.id,
-                faculte_uca=pending["role_data"]["faculte_uca"],
-                numero_etudiant=pending["role_data"]["numero_etudiant"],
-            )
-        )
-    elif pending["role"] == "proprietaire":
-        db.session.add(
-            Proprietaire(
-                utilisateur_id=utilisateur.id,
-                telephone=pending["role_data"]["telephone"],
-                est_verifie=True,
-            )
-        )
-    return utilisateur
-
-
 def safe_next_url(default_endpoint="index"):
     # On accepte seulement les redirections internes pour eviter les liens externes dangereux.
     next_url = request.form.get("next") or request.args.get("next")
@@ -1135,67 +1107,94 @@ def aide():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        nom = request.form["nom"].strip()
-        email = request.form["email"].strip().lower()
-        password = request.form["mot_de_passe"]
-        role = request.form["role"]
-        errors = password_errors(password)
+        try:
+            app.logger.info("REGISTER STEP 1: received form")
+            nom = request.form.get("nom", "").strip()
+            email = request.form.get("email", "").strip().lower()
+            password = request.form.get("mot_de_passe", "")
+            role = request.form.get("role", "etudiant").strip()
+            next_url = request.form.get("next", "")
 
-        if email == ADMIN_EMAIL:
-            role = "admin"
+            if email == ADMIN_EMAIL:
+                role = "admin"
+            if role not in ["etudiant", "proprietaire", "admin"]:
+                role = "etudiant"
 
-        if not is_valid_email(email):
-            flash("Adresse email invalide.", "error")
-            return redirect(url_for("register", role=role, next=request.form.get("next", "")))
+            if not nom or not email or not password:
+                flash("Veuillez remplir tous les champs obligatoires.", "error")
+                return redirect(url_for("register", role=role, next=next_url))
+            if not is_valid_email(email):
+                flash("Adresse email invalide.", "error")
+                return redirect(url_for("register", role=role, next=next_url))
 
-        if errors:
-            flash("Mot de passe trop faible. Il doit contenir : " + ", ".join(errors) + ".", "error")
-            return redirect(url_for("register", role=role, next=request.form.get("next", "")))
+            errors = password_errors(password)
+            if errors:
+                flash("Mot de passe trop faible. Il doit contenir : " + ", ".join(errors) + ".", "error")
+                return redirect(url_for("register", role=role, next=next_url))
 
-        existing_user = Utilisateur.query.filter_by(email=email).first()
-        if existing_user:
-            flash("Cet email est dÃ©jÃ  utilisÃ©.", "error")
-            return redirect(url_for("register", role=role, next=request.form.get("next", "")))
-
-        role_data = {}
-
-        if role == "etudiant":
             numero = request.form.get("numero_etudiant", "").strip().upper()
             faculte = request.form.get("faculte_uca", "").strip()
-            if not is_valid_massar(numero):
-                flash("Code Massar invalide. Exemple attendu : G123456789.", "error")
-                return redirect(url_for("register"))
-            if Etudiant.query.filter_by(numero_etudiant=numero).first():
-                flash("Ce code Massar est dÃ©jÃ  utilisÃ©.", "error")
-                return redirect(url_for("register"))
-            role_data = {"faculte_uca": faculte, "numero_etudiant": numero}
-        elif role == "proprietaire":
             telephone = request.form.get("telephone", "").strip()
-            if not telephone:
+
+            if role == "etudiant":
+                if not faculte or not numero:
+                    flash("La faculte et le code Massar sont obligatoires.", "error")
+                    return redirect(url_for("register", role=role, next=next_url))
+                if not is_valid_massar(numero):
+                    flash("Code Massar invalide. Exemple attendu : G123456789.", "error")
+                    return redirect(url_for("register", role=role, next=next_url))
+            elif role == "proprietaire" and not telephone:
                 flash("Le numero de telephone est obligatoire.", "error")
-                return redirect(url_for("register"))
-            role_data = {"telephone": telephone}
+                return redirect(url_for("register", role=role, next=next_url))
 
-        pending = {
-            "nom": nom,
-            "email": email,
-            "password_hash": generate_password_hash(password),
-            "role": role,
-            "role_data": role_data,
-            "next": safe_next_url("index"),
-        }
+            app.logger.info("REGISTER STEP 2: validation ok")
+            app.logger.info("REGISTER STEP 3: checking existing email")
+            if Utilisateur.query.filter_by(email=email).first():
+                flash("Cet email est deja utilise.", "error")
+                return redirect(url_for("register", role=role, next=next_url))
+            if role == "etudiant" and Etudiant.query.filter_by(numero_etudiant=numero).first():
+                flash("Ce code Massar est deja utilise.", "error")
+                return redirect(url_for("register", role=role, next=next_url))
 
-        try:
-            utilisateur = create_user_from_registration(pending)
+            app.logger.info("REGISTER STEP 4: hashing password")
+            password_hash = generate_password_hash(password, method="pbkdf2:sha256", salt_length=16)
+
+            app.logger.info("REGISTER STEP 5: saving user")
+            utilisateur = Utilisateur(
+                nom=nom,
+                email=email,
+                mot_de_passe=password_hash,
+                role=role,
+            )
+            db.session.add(utilisateur)
+            db.session.flush()
+
+            if role == "etudiant":
+                db.session.add(
+                    Etudiant(
+                        utilisateur_id=utilisateur.id,
+                        faculte_uca=faculte,
+                        numero_etudiant=numero,
+                    )
+                )
+            elif role == "proprietaire":
+                db.session.add(
+                    Proprietaire(
+                        utilisateur_id=utilisateur.id,
+                        telephone=telephone,
+                        est_verifie=True,
+                    )
+                )
+
             db.session.commit()
+            app.logger.info("REGISTER STEP 6: redirecting")
+            flash("Compte cree avec succes. Vous pouvez maintenant vous connecter.", "success")
+            return redirect(url_for("login", next=next_url or url_for("index")))
         except Exception as exc:
             db.session.rollback()
-            app.logger.error("Erreur creation compte: %s", exc, exc_info=True)
+            app.logger.exception("Erreur POST /register: %s", exc)
             flash("Impossible de creer le compte pour le moment. Reessayez dans quelques instants.", "error")
-            return redirect(url_for("register", role=role, next=request.form.get("next", "")))
-
-        flash("Compte cree avec succes. Vous pouvez maintenant vous connecter.", "success")
-        return redirect(url_for("login", next=pending["next"]))
+            return redirect(url_for("register", role=request.form.get("role", "etudiant"), next=request.form.get("next", "")))
 
     selected_role = request.args.get("role", "etudiant")
     if selected_role not in ["etudiant", "proprietaire"]:
