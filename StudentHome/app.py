@@ -1187,9 +1187,18 @@ def register():
                 )
 
             db.session.commit()
+            login_user(utilisateur)
             app.logger.info("REGISTER STEP 6: redirecting")
-            flash("Compte cree avec succes. Vous pouvez maintenant vous connecter.", "success")
-            return redirect(url_for("login", next=next_url or url_for("index")))
+            flash("Compte cree avec succes. Vous etes maintenant connecte.", "success")
+            if next_url and not next_url.startswith("/login") and not next_url.startswith("/register"):
+                return redirect(next_url)
+            if utilisateur.role == "etudiant":
+                return redirect(url_for("dashboard_etudiant"))
+            if utilisateur.role == "proprietaire":
+                return redirect(url_for("dashboard_proprietaire"))
+            if utilisateur.role == "admin":
+                return redirect(url_for("dashboard_admin"))
+            return redirect(url_for("index"))
         except Exception as exc:
             db.session.rollback()
             app.logger.exception("Erreur POST /register: %s", exc)
