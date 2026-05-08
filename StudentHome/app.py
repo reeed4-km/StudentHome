@@ -3,11 +3,9 @@ import random
 import re
 import io
 import math
-import smtplib
 import urllib.parse
 import urllib.request
 from datetime import date, datetime, timedelta
-from email.message import EmailMessage
 from functools import wraps
 
 from flask import Flask, flash, jsonify, redirect, render_template, request, send_file, session, url_for
@@ -33,6 +31,10 @@ ADMIN_EMAIL = "redakouchtam@icloud.com"
 ADMIN_DEFAULT_PASSWORD = "Admin@12345"
 SUPPORTED_LANGUAGES = {"fr", "en", "ar"}
 STUDENTHOME_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSeIqfPAxMvEvFlE0aXYicDXN6f7arsgtZHDk8zv3OnQVNJjqw/viewform?usp=sharing&ouid=100864576385540183701"
+OTP_EXPIRATION_MINUTES = 10
+OTP_MAX_ATTEMPTS = 5
+OTP_RESEND_COOLDOWN_SECONDS = 60
+OTP_MAX_RESENDS = 3
 
 
 def load_env_file():
@@ -49,6 +51,8 @@ def load_env_file():
 
 
 load_env_file()
+
+from config import Config
 
 
 def fix_text_encoding(value):
@@ -511,18 +515,15 @@ TRANSLATIONS = {
 }
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "studenthome-cle-secrete-dev"
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(BASE_DIR, "database.db")
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.config["MAIL_SERVER"] = os.environ.get("STUDENTHOME_SMTP_HOST", "smtp.gmail.com")
-app.config["MAIL_PORT"] = int(os.environ.get("STUDENTHOME_SMTP_PORT", "587"))
-app.config["MAIL_USE_TLS"] = os.environ.get("STUDENTHOME_SMTP_TLS", "true").lower() == "true"
-app.config["MAIL_USERNAME"] = os.environ.get("STUDENTHOME_SMTP_USER")
-app.config["MAIL_PASSWORD"] = os.environ.get("STUDENTHOME_SMTP_PASSWORD")
-app.config["MAIL_DEFAULT_SENDER"] = os.environ.get("STUDENTHOME_SMTP_SENDER") or app.config["MAIL_USERNAME"]
+app.config.from_object(Config)
+
+print("MAIL_USERNAME exists:", bool(app.config.get("MAIL_USERNAME")))
+print("MAIL_PASSWORD exists:", bool(app.config.get("MAIL_PASSWORD")))
 
 db = SQLAlchemy(app)
-mail = Mail(app) if Mail else None
+mail = Mail() if Mail else None
+if mail:
+    mail.init_app(app)
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
 login_manager.login_message = "Connectez-vous pour continuer."
@@ -537,6 +538,11 @@ class Utilisateur(UserMixin, db.Model):
     role = db.Column(db.String(30), nullable=False)
     photo_profil = db.Column(db.String(220), nullable=True)
     email_verifie = db.Column(db.Boolean, default=False)
+    otp_code_hash = db.Column(db.String(255), nullable=True)
+    otp_expiration = db.Column(db.DateTime, nullable=True)
+    otp_attempts = db.Column(db.Integer, default=0)
+    otp_resend_count = db.Column(db.Integer, default=0)
+    otp_last_sent_at = db.Column(db.DateTime, nullable=True)
 
     etudiant = db.relationship("Etudiant", backref="utilisateur", uselist=False, cascade="all, delete")
     proprietaire = db.relationship("Proprietaire", backref="utilisateur", uselist=False, cascade="all, delete")
@@ -751,6 +757,10 @@ def is_valid_massar(code_massar):
     return bool(re.fullmatch(r"[A-Z][0-9]{9}", code_massar.strip().upper()))
 
 
+def is_valid_email(email):
+    return bool(re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email.strip().lower()))
+
+
 def password_errors(password):
     # RÃ¨gles lisibles pour Ã©viter les mots de passe trop faibles.
     errors = []
@@ -771,36 +781,62 @@ def generate_verification_code():
     return str(random.randint(100000, 999999))
 
 
+def set_user_otp(utilisateur, code, reset_resend_count=False):
+    utilisateur.otp_code_hash = generate_password_hash(code)
+    utilisateur.otp_expiration = datetime.utcnow() + timedelta(minutes=OTP_EXPIRATION_MINUTES)
+    utilisateur.otp_attempts = 0
+    utilisateur.otp_last_sent_at = datetime.utcnow()
+    if reset_resend_count:
+        utilisateur.otp_resend_count = 0
+
+
+def clear_user_otp(utilisateur):
+    utilisateur.otp_code_hash = None
+    utilisateur.otp_expiration = None
+    utilisateur.otp_attempts = 0
+    utilisateur.otp_resend_count = 0
+    utilisateur.otp_last_sent_at = None
+
+
 def send_email_code(destination, code, subject="Code de verification StudentHome"):
-    body = f"Votre code de verification StudentHome est : {code}"
+    body = (
+        "Bonjour,\n\n"
+        f"Votre code de verification StudentHome Marrakech est : {code}\n"
+        f"Ce code expire dans {OTP_EXPIRATION_MINUTES} minutes.\n\n"
+        "Si vous n'avez pas demande ce code, ignorez ce message.\n\n"
+        "L'equipe StudentHome Marrakech"
+    )
     return send_email_message(destination, subject, body)
 
 
 def send_email_message(destination, subject, body):
-    smtp_host = os.environ.get("STUDENTHOME_SMTP_HOST")
-    smtp_port = int(os.environ.get("STUDENTHOME_SMTP_PORT", "587"))
-    smtp_user = os.environ.get("STUDENTHOME_SMTP_USER")
-    smtp_password = os.environ.get("STUDENTHOME_SMTP_PASSWORD")
-    smtp_sender = os.environ.get("STUDENTHOME_SMTP_SENDER", smtp_user or "noreply@studenthome.local")
-
-    if not smtp_host or not smtp_user or not smtp_password:
-        app.logger.warning("SMTP non configure. Email non envoye a %s.", destination)
+    if not mail or not MailMessage:
+        app.logger.error("Flask-Mail n'est pas installe. Email non envoye a %s.", destination)
         return False
 
-    message = EmailMessage()
-    message["Subject"] = subject
-    message["From"] = smtp_sender
-    message["To"] = destination
-    message.set_content(body)
+    sender = app.config.get("MAIL_DEFAULT_SENDER")
+    if not app.config.get("MAIL_SERVER") or not app.config.get("MAIL_USERNAME") or not app.config.get("MAIL_PASSWORD") or not sender:
+        app.logger.warning(
+            "SMTP non configure. Email non envoye a %s. MAIL_USERNAME exists: %s. MAIL_PASSWORD exists: %s. MAIL_DEFAULT_SENDER exists: %s.",
+            destination,
+            bool(app.config.get("MAIL_USERNAME")),
+            bool(app.config.get("MAIL_PASSWORD")),
+            bool(sender),
+        )
+        return False
+
+    message = MailMessage(
+        subject=subject,
+        sender=sender,
+        recipients=[destination],
+        body=body,
+    )
 
     try:
-        with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
-            server.starttls()
-            server.login(smtp_user, smtp_password)
-            server.send_message(message)
+        mail.send(message)
         return True
     except Exception as exc:
-        app.logger.error("Erreur envoi email vers %s: %s", destination, exc)
+        app.logger.exception("Erreur envoi email vers %s: %s", destination, exc.__class__.__name__)
         return False
 
 
@@ -834,7 +870,7 @@ def send_sms_code(destination, code):
     api_key = os.environ.get("STUDENTHOME_SMS_API_KEY")
 
     if not provider_url or not api_key:
-        app.logger.warning("DEV SMS CODE for %s: %s", destination, code)
+        app.logger.warning("SMS non configure. Code SMS non envoye a %s.", destination)
         return False
 
     query = urllib.parse.urlencode({"to": destination, "message": f"Code StudentHome : {code}", "key": api_key})
@@ -848,13 +884,13 @@ def send_verification_code(method, destination, code):
     return send_email_code(destination, code)
 
 
-def create_user_from_registration(pending):
+def create_user_from_registration(pending, email_verifie=False):
     utilisateur = Utilisateur(
         nom=pending["nom"],
         email=pending["email"],
         mot_de_passe=pending["password_hash"],
         role=pending["role"],
-        email_verifie=True,
+        email_verifie=email_verifie,
     )
     db.session.add(utilisateur)
     db.session.flush()
@@ -874,8 +910,6 @@ def create_user_from_registration(pending):
                 est_verifie=True,
             )
         )
-    db.session.commit()
-    send_registration_form_email(utilisateur)
     return utilisateur
 
 
@@ -1127,6 +1161,22 @@ def ensure_user_email_verified_column():
         db.session.commit()
 
 
+def ensure_user_otp_columns():
+    columns = db.session.execute(text("PRAGMA table_info(utilisateur)")).fetchall()
+    column_names = [column[1] for column in columns]
+    otp_columns = {
+        "otp_code_hash": "VARCHAR(255)",
+        "otp_expiration": "DATETIME",
+        "otp_attempts": "INTEGER DEFAULT 0",
+        "otp_resend_count": "INTEGER DEFAULT 0",
+        "otp_last_sent_at": "DATETIME",
+    }
+    for column_name, column_type in otp_columns.items():
+        if column_name not in column_names:
+            db.session.execute(text(f"ALTER TABLE utilisateur ADD COLUMN {column_name} {column_type}"))
+    db.session.commit()
+
+
 def ensure_logement_advanced_columns():
     columns = db.session.execute(text("PRAGMA table_info(logement)")).fetchall()
     column_names = [column[1] for column in columns]
@@ -1160,6 +1210,7 @@ def init_database():
     db.create_all()
     ensure_user_profile_photo_column()
     ensure_user_email_verified_column()
+    ensure_user_otp_columns()
     ensure_logement_advanced_columns()
     ensure_colocation_year_column()
     ensure_logement_type_column()
@@ -1257,13 +1308,23 @@ def register():
         if email == ADMIN_EMAIL:
             role = "admin"
 
+        if not is_valid_email(email):
+            flash("Adresse email invalide.", "error")
+            return redirect(url_for("register", role=role, next=request.form.get("next", "")))
+
         if errors:
             flash("Mot de passe trop faible. Il doit contenir : " + ", ".join(errors) + ".", "error")
-            return redirect(url_for("register"))
+            return redirect(url_for("register", role=role, next=request.form.get("next", "")))
 
-        if Utilisateur.query.filter_by(email=email).first():
+        existing_user = Utilisateur.query.filter_by(email=email).first()
+        if existing_user and not existing_user.email_verifie:
+            session["verify_user_id"] = existing_user.id
+            session["verify_next"] = safe_next_url("index")
+            flash("Ce compte existe mais n'est pas encore verifie. Vous pouvez saisir ou renvoyer le code.", "error")
+            return redirect(url_for("verifier_compte"))
+        if existing_user:
             flash("Cet email est dÃ©jÃ  utilisÃ©.", "error")
-            return redirect(url_for("register"))
+            return redirect(url_for("register", role=role, next=request.form.get("next", "")))
 
         role_data = {}
 
@@ -1286,7 +1347,7 @@ def register():
 
         email_code = generate_verification_code()
         phone_code = generate_verification_code() if role == "proprietaire" else None
-        session["pending_registration"] = {
+        pending = {
             "nom": nom,
             "email": email,
             "password_hash": generate_password_hash(password),
@@ -1294,16 +1355,21 @@ def register():
             "role_data": role_data,
             "next": safe_next_url("index"),
         }
-        session["pending_email_code"] = email_code
-        session["pending_phone_code"] = phone_code
+
+        utilisateur = create_user_from_registration(pending, email_verifie=(role == "admin"))
+        set_user_otp(utilisateur, email_code, reset_resend_count=True)
+
         email_sent = send_email_code(email, email_code, "Verification de votre compte StudentHome")
         if not email_sent:
-            session.pop("pending_registration", None)
-            session.pop("pending_email_code", None)
-            session.pop("pending_phone_code", None)
-            session.pop("pending_phone_required", None)
+            db.session.rollback()
             flash("Email non envoye : configurez SMTP dans Render avant d'autoriser les inscriptions. Aucun compte n'a ete cree.", "error")
             return redirect(url_for("register", role=role, next=request.form.get("next", "")))
+
+        db.session.commit()
+        session["verify_user_id"] = utilisateur.id
+        session["verify_next"] = pending["next"]
+        session["pending_phone_code"] = phone_code
+
         if role == "proprietaire":
             phone_sent = send_sms_code(role_data["telephone"], phone_code)
             session["pending_phone_required"] = phone_sent
@@ -1320,31 +1386,76 @@ def register():
 
 @app.route("/verifier-compte", methods=["GET", "POST"])
 def verifier_compte():
-    pending = session.get("pending_registration")
-    if not pending:
+    utilisateur = Utilisateur.query.get(session.get("verify_user_id"))
+    if not utilisateur:
         flash("Commencez par remplir le formulaire d'inscription.", "error")
         return redirect(url_for("choisir_role"))
 
     if request.method == "POST":
         email_code = request.form.get("email_code", "").strip()
         phone_code = request.form.get("phone_code", "").strip()
-        if email_code != session.get("pending_email_code"):
+
+        if (utilisateur.otp_attempts or 0) >= OTP_MAX_ATTEMPTS:
+            flash("Trop de tentatives. Demandez un nouveau code.", "error")
+            return redirect(url_for("verifier_compte"))
+
+        if not utilisateur.otp_expiration or datetime.utcnow() > utilisateur.otp_expiration:
+            flash("Code expire. Demandez un nouveau code.", "error")
+            return redirect(url_for("verifier_compte"))
+
+        if not utilisateur.otp_code_hash or not check_password_hash(utilisateur.otp_code_hash, email_code):
+            utilisateur.otp_attempts = (utilisateur.otp_attempts or 0) + 1
+            db.session.commit()
             flash("Code email incorrect.", "error")
             return redirect(url_for("verifier_compte"))
-        if pending["role"] == "proprietaire" and session.get("pending_phone_required") and phone_code != session.get("pending_phone_code"):
+
+        if utilisateur.role == "proprietaire" and session.get("pending_phone_required") and phone_code != session.get("pending_phone_code"):
             flash("Code telephone incorrect.", "error")
             return redirect(url_for("verifier_compte"))
 
-        utilisateur = create_user_from_registration(pending)
-        session.pop("pending_registration", None)
-        session.pop("pending_email_code", None)
+        utilisateur.email_verifie = True
+        clear_user_otp(utilisateur)
+        db.session.commit()
+        send_registration_form_email(utilisateur)
+        next_url = session.pop("verify_next", None)
+        session.pop("verify_user_id", None)
         session.pop("pending_phone_code", None)
         session.pop("pending_phone_required", None)
         login_user(utilisateur)
         flash("Compte verifie et cree avec succes.", "success")
-        return redirect(pending.get("next") or url_for("index"))
+        return redirect(next_url or url_for("index"))
 
-    return render_template("verifier_compte.html", pending=pending)
+    return render_template("verifier_compte.html", utilisateur=utilisateur, otp_minutes=OTP_EXPIRATION_MINUTES)
+
+
+@app.route("/renvoyer-otp", methods=["POST"])
+def renvoyer_otp():
+    utilisateur = Utilisateur.query.get(session.get("verify_user_id"))
+    if not utilisateur:
+        flash("Commencez par remplir le formulaire d'inscription.", "error")
+        return redirect(url_for("choisir_role"))
+    if utilisateur.email_verifie:
+        flash("Ce compte est deja verifie.", "success")
+        return redirect(url_for("login"))
+
+    now = datetime.utcnow()
+    if utilisateur.otp_last_sent_at and (now - utilisateur.otp_last_sent_at).total_seconds() < OTP_RESEND_COOLDOWN_SECONDS:
+        flash("Veuillez attendre une minute avant de demander un nouveau code.", "error")
+        return redirect(url_for("verifier_compte"))
+    if (utilisateur.otp_resend_count or 0) >= OTP_MAX_RESENDS:
+        flash("Nombre maximal de renvois atteint. Recommencez l'inscription avec une adresse valide.", "error")
+        return redirect(url_for("verifier_compte"))
+
+    code = generate_verification_code()
+    if not send_email_code(utilisateur.email, code, "Nouveau code de verification StudentHome"):
+        flash("Impossible d'envoyer un nouveau code. Verifiez la configuration SMTP.", "error")
+        return redirect(url_for("verifier_compte"))
+
+    set_user_otp(utilisateur, code)
+    utilisateur.otp_resend_count = (utilisateur.otp_resend_count or 0) + 1
+    db.session.commit()
+    flash("Nouveau code envoye par email.", "success")
+    return redirect(url_for("verifier_compte"))
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -1365,8 +1476,10 @@ def login():
 
         if utilisateur and (admin_without_password or check_password_hash(utilisateur.mot_de_passe, password)):
             if not utilisateur.email_verifie and utilisateur.role != "admin":
-                flash("Votre email n'est pas encore verifie. Demandez un nouveau compte avec un email valide.", "error")
-                return redirect(url_for("login"))
+                session["verify_user_id"] = utilisateur.id
+                session["verify_next"] = safe_next_url("index")
+                flash("Votre email n'est pas encore verifie. Saisissez le code recu ou demandez un nouveau code.", "error")
+                return redirect(url_for("verifier_compte"))
             login_user(utilisateur)
             if request.form.get("next"):
                 return redirect(safe_next_url("index"))

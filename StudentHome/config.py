@@ -1,0 +1,26 @@
+import os
+
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    load_dotenv = None
+
+
+if load_dotenv:
+    load_dotenv()
+
+
+class Config:
+    SECRET_KEY = os.environ.get("SECRET_KEY", "studenthome-cle-secrete-dev")
+    SQLALCHEMY_DATABASE_URI = os.environ.get(
+        "DATABASE_URL",
+        "sqlite:///" + os.path.join(os.path.abspath(os.path.dirname(__file__)), "database.db"),
+    )
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    MAIL_SERVER = os.environ.get("MAIL_SERVER")
+    MAIL_PORT = int(os.environ.get("MAIL_PORT", 587))
+    MAIL_USE_TLS = os.environ.get("MAIL_USE_TLS", "True") == "True"
+    MAIL_USERNAME = os.environ.get("MAIL_USERNAME")
+    MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
+    MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER")

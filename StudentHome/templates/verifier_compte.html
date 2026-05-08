@@ -10,23 +10,48 @@
             </div>
         </div>
 
-        <p>Nous avons envoye un code a votre email {{ pending.email }}{% if pending.role == 'proprietaire' %} et un code SMS a votre telephone{% endif %}.</p>
+        <p>
+            Nous avons envoye un code de verification a
+            <strong>{{ utilisateur.email }}</strong>.
+            Ce code expire dans {{ otp_minutes }} minutes.
+        </p>
 
         <div class="login-grid">
-            <div class="field {% if pending.role != 'proprietaire' %}field-wide{% endif %}">
+            <div class="field {% if utilisateur.role != 'proprietaire' %}field-wide{% endif %}">
                 <label>Code email</label>
-                <input type="text" name="email_code" placeholder="Code recu par email" required>
+                <input
+                    type="text"
+                    name="email_code"
+                    placeholder="Code recu par email"
+                    inputmode="numeric"
+                    maxlength="6"
+                    autocomplete="one-time-code"
+                    required
+                >
             </div>
-            {% if pending.role == 'proprietaire' %}
+            {% if utilisateur.role == 'proprietaire' and session.get('pending_phone_required') %}
                 <div class="field">
                     <label>Code SMS</label>
-                    <input type="text" name="phone_code" placeholder="Code recu par SMS" required>
+                    <input
+                        type="text"
+                        name="phone_code"
+                        placeholder="Code recu par SMS"
+                        inputmode="numeric"
+                        maxlength="6"
+                        autocomplete="one-time-code"
+                        required
+                    >
                 </div>
             {% endif %}
         </div>
 
-        <button class="btn btn-primary full login-submit" type="submit">Verifier et creer le compte</button>
-        <p class="form-help">Pour la production, configurez SMTP/SMS. En mode developpement, les codes sont dans le terminal du serveur, jamais affiches sur la page.</p>
+        <button class="btn btn-primary full login-submit" type="submit">Verifier le compte</button>
+        <p class="form-help">Le code n'est jamais affiche sur la page. Verifiez votre boite mail et le dossier spam.</p>
+    </form>
+
+    <form class="form-card login-card compact-form" method="post" action="{{ url_for('renvoyer_otp') }}">
+        <p>Vous n'avez pas recu le code ?</p>
+        <button class="btn btn-outline full" type="submit">Renvoyer le code</button>
     </form>
 </section>
 {% endblock %}

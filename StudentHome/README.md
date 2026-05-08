@@ -46,16 +46,17 @@ Si SMTP n'est pas configure, aucun compte public n'est cree : l'utilisateur doit
 Variables email SMTP :
 
 ```text
-STUDENTHOME_SMTP_HOST=smtp.gmail.com
-STUDENTHOME_SMTP_PORT=587
-STUDENTHOME_SMTP_USER=votre_email@gmail.com
-STUDENTHOME_SMTP_PASSWORD=mot_de_passe_application
-STUDENTHOME_SMTP_SENDER=votre_email@gmail.com
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USE_TLS=True
+MAIL_USERNAME=votre_email@gmail.com
+MAIL_PASSWORD=mot_de_passe_application
+MAIL_DEFAULT_SENDER=votre_email@gmail.com
 ```
 
 Apres configuration SMTP, chaque nouvel utilisateur inscrit recoit automatiquement un email avec le formulaire Google Forms StudentHome. L'administrateur peut aussi renvoyer ce formulaire a tous les utilisateurs depuis le dashboard admin.
 
-Sur Render, ajoutez ces variables dans `Environment` du service web, puis redeployez. Sans ces variables, Gmail ne pourra pas envoyer les codes.
+Sur Render, ajoutez exactement ces variables dans `Environment` du service web, puis redeployez. Sans ces variables, Gmail ne pourra pas envoyer les codes et aucun nouveau compte ne sera cree.
 
 Variables SMS, selon le fournisseur choisi :
 
