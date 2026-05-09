@@ -1120,12 +1120,13 @@ def ensure_non_admin_roles():
         db.session.commit()
 
 
-def ensure_user_profile_photo_column():
-    column_names = [column[1] for column in columns]
-    if "photo_profil" not in column_names:
+
+   def ensure_user_profile_photo_column():
+    inspector = inspect(db.engine)
+    columns = [column["name"] for column in inspector.get_columns("utilisateur")]
+    if "photo_profil" not in columns:
         db.session.execute(text("ALTER TABLE utilisateur ADD COLUMN photo_profil VARCHAR(220)"))
         db.session.commit()
-
 
 def ensure_logement_advanced_columns():
     columns = db.session.execute(text("PRAGMA table_info(logement)")).fetchall()
