@@ -708,8 +708,7 @@ class logement(db.Model):
     proprietaire = db.relationship("Proprietaire", backref="logements")
     reservations = db.relationship("Reservation", backref="logement", cascade="all, delete")
     avis = db.relationship("Avis", backref="logement", cascade="all, delete")
-with app.app_context():
-    db.create_all()
+
     @property
     def media_path(self):
         if self.photos.startswith("uploads/"):
@@ -2282,7 +2281,8 @@ def confirmer_conformite(id):
 
 with app.app_context():
     init_database()
-
+with app.app_context():
+    db.create_all()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
