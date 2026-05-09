@@ -8,7 +8,7 @@ from functools import wraps
 from flask import Flask, flash, jsonify, redirect, render_template, request, send_file, session, url_for
 from flask_login import LoginManager, UserMixin, current_user, login_required, login_user, logout_user
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import inspect, or_, text
+from sqlalchemy import or_, text
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
@@ -17,7 +17,6 @@ UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
 ALLOWED_MEDIA_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "mp4", "webm", "mov"}
 VIDEO_EXTENSIONS = {"mp4", "webm", "mov"}
 PROFILE_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
-MAX_ANNONCE_MEDIA = 20
 ADMIN_EMAIL = "redakouchtam@icloud.com"
 ADMIN_DEFAULT_PASSWORD = "Admin@12345"
 SUPPORTED_LANGUAGES = {"fr", "en", "ar"}
@@ -82,13 +81,13 @@ TRANSLATIONS = {
     "fr": {
         "nav_housing": "Logements",
         "nav_dashboard": "Dashboard",
-        "nav_reservations": "RÃ©servations",
+        "nav_reservations": "Reservations",
         "nav_messages": "Messagerie",
         "nav_help": "Aide",
         "nav_profile": "Profil",
         "nav_add": "Ajouter",
         "nav_admin": "Admin",
-        "nav_logout": "DÃ©connexion",
+        "nav_logout": "Déconnexion",
         "nav_login": "Connexion",
         "nav_register": "Inscription",
         "nav_home": "Accueil",
@@ -115,13 +114,13 @@ TRANSLATIONS = {
         "footer": "StudentHome - Plateforme de logement Ã©tudiant pour l'UCA",
         "hero_tag": "Logement Ã©tudiant UCA",
         "hero_title": "Trouvez un logement proche de votre facultÃ©.",
-        "hero_text": "StudentHome aide les Ã©tudiants Ã  chercher, rÃ©server et suivre leur demande en toute simplicitÃ©.",
+        "hero_text": "StudentHome aide les étudiants Ã  chercher, réserver et suivre leur demande en toute simplicitÃ©.",
         "explore_housing": "Explorer les logements",
         "create_account": "CrÃ©er un compte",
         "popular_housing": "Logements populaires",
         "view_all": "Tout voir",
         "no_listing_title": "Aucune annonce disponible pour le moment",
-        "no_listing_text": "Les logements apparaÃ®tront ici dÃ¨s quâ€™un propriÃ©taire publiera sa premiÃ¨re annonce.",
+        "no_listing_text": "Les logements apparaitront ici dans quâ€™un propriÃ©taire publiera sa premiÃ¨re annonce.",
         "create_owner_account": "CrÃ©er un compte propriÃ©taire",
         "for_students": "Pour Ã©tudiants",
         "for_students_text": "Recherche par facultÃ©, quartier, prix, rÃ©servation, suivi des demandes et avis.",
@@ -129,9 +128,9 @@ TRANSLATIONS = {
         "for_owners_text": "Publication d'annonces, gestion des demandes et validation de conformitÃ©.",
         "choose_role_title": "Choisissez votre type de compte",
         "choose_role_text": "SÃ©lectionnez le profil qui correspond Ã  votre utilisation de StudentHome.",
-        "student": "Ã‰tudiant",
-        "owner": "PropriÃ©taire",
-        "student_choice_text": "Rechercher un logement, contacter un propriÃ©taire et suivre vos rÃ©servations.",
+        "student": "étudiant",
+        "owner": "Propriétaire",
+        "student_choice_text": "Rechercher un logement, contacter un propriétaire et suivre vos rÃ©servations.",
         "owner_choice_text": "Publier vos annonces, rÃ©pondre aux Ã©tudiants et gÃ©rer vos demandes.",
         "continue": "Continuer",
         "register_title": "Inscription",
@@ -683,7 +682,7 @@ class Proprietaire(db.Model):
     est_verifie = db.Column(db.Boolean, default=False)
 
 
-class Logement(db.Model):
+class logement(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     titre = db.Column(db.String(160), nullable=False)
     adresse = db.Column(db.String(220), nullable=True)
@@ -709,95 +708,17 @@ class Logement(db.Model):
     proprietaire = db.relationship("Proprietaire", backref="logements")
     reservations = db.relationship("Reservation", backref="logement", cascade="all, delete")
     avis = db.relationship("Avis", backref="logement", cascade="all, delete")
-    medias = db.relationship(
-        "LogementMedia",
-        backref="logement",
-        cascade="all, delete-orphan",
-        order_by="LogementMedia.ordre",
-    )
-
+with app.app_context():
+    db.create_all()
     @property
-    def raw_media_path(self):
-        if self.photos and self.photos.startswith("uploads/"):
+    def media_path(self):
+        if self.photos.startswith("uploads/"):
             return self.photos
-        return "images/" + (self.photos or "marrakech-rooftop-sunset.jpg")
-
-    @property
-    def media_path(self):
-        if self.visible_medias:
-            return self.visible_medias[0].media_path
-        if os.path.exists(os.path.join(BASE_DIR, "static", self.raw_media_path)):
-            return self.raw_media_path
-        return "images/marrakech-rooftop-sunset.jpg"
-
-    @property
-    def media_url(self):
-        if self.visible_medias:
-            return self.visible_medias[0].media_url
-        if os.path.exists(os.path.join(BASE_DIR, "static", self.raw_media_path)):
-            return url_for("static", filename=self.raw_media_path)
-        return url_for("static", filename="images/marrakech-rooftop-sunset.jpg")
-
-    @property
-    def media_exists(self):
-        return os.path.exists(os.path.join(BASE_DIR, "static", self.raw_media_path))
-
-    @property
-    def visible_medias(self):
-        available_medias = [media for media in self.medias if media.is_available]
-        if available_medias:
-            return available_medias
-        return []
+        return "images/" + self.photos
 
     @property
     def is_video(self):
-        extension = self.media_path.rsplit(".", 1)[-1].lower()
-        return extension in VIDEO_EXTENSIONS
-
-    @property
-    def availability_text(self):
-        if not self.date_disponibilite:
-            return ""
-        try:
-            available_date = date.fromisoformat(self.date_disponibilite)
-        except ValueError:
-            return "Disponible a partir du " + self.date_disponibilite
-        if available_date <= date.today():
-            return "Disponible dès le " + self.date_disponibilite
-        return "Disponible a partir du " + self.date_disponibilite
-
-
-class LogementMedia(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    logement_id = db.Column(db.Integer, db.ForeignKey("logement.id"), nullable=False)
-    fichier = db.Column(db.String(220), nullable=False)
-    mime_type = db.Column(db.String(80), nullable=True)
-    data = db.Column(db.LargeBinary, nullable=True)
-    ordre = db.Column(db.Integer, default=0)
-
-    @property
-    def media_path(self):
-        if self.fichier.startswith("uploads/"):
-            return self.fichier
-        return "images/" + self.fichier
-
-    @property
-    def media_exists(self):
-        return os.path.exists(os.path.join(BASE_DIR, "static", self.media_path))
-
-    @property
-    def is_available(self):
-        return bool(self.data) or self.media_exists
-
-    @property
-    def media_url(self):
-        if self.data:
-            return url_for("logement_media_file", media_id=self.id)
-        return url_for("static", filename=self.media_path)
-
-    @property
-    def is_video(self):
-        extension = self.fichier.rsplit(".", 1)[-1].lower()
+        extension = self.photos.rsplit(".", 1)[-1].lower()
         return extension in VIDEO_EXTENSIONS
 
 
@@ -995,33 +916,6 @@ def save_uploaded_media(file_storage):
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     file_storage.save(os.path.join(UPLOAD_FOLDER, saved_name))
     return "uploads/" + saved_name
-
-
-def save_uploaded_media_list(file_list, limit=MAX_ANNONCE_MEDIA):
-    files = [file for file in file_list if file and file.filename]
-    if len(files) > limit:
-        return [], f"Vous pouvez ajouter {limit} fichiers maximum par annonce."
-
-    saved_files = []
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-    for index, file_storage in enumerate(files, start=1):
-        if not is_allowed_media(file_storage.filename):
-            return [], "Format media non autorise. Utilisez jpg, png, webp, mp4, webm ou mov."
-
-        filename = secure_filename(file_storage.filename)
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
-        saved_name = f"{timestamp}_{index}_{filename}"
-        file_bytes = file_storage.read()
-        with open(os.path.join(UPLOAD_FOLDER, saved_name), "wb") as media_file:
-            media_file.write(file_bytes)
-        saved_files.append({
-            "path": "uploads/" + saved_name,
-            "data": file_bytes,
-            "mime_type": file_storage.mimetype or "application/octet-stream",
-        })
-
-    return saved_files, None
 
 
 def save_uploaded_profile_image(file_storage):
@@ -1227,10 +1121,6 @@ def ensure_non_admin_roles():
         db.session.commit()
 
 
-def is_sqlite_database():
-    return db.engine.url.get_backend_name() == "sqlite"
-
-
 def ensure_user_profile_photo_column():
     columns = db.session.execute(text("PRAGMA table_info(utilisateur)")).fetchall()
     column_names = [column[1] for column in columns]
@@ -1270,12 +1160,11 @@ def init_database():
     # La base est crÃ©Ã©e automatiquement au lancement.
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     db.create_all()
-    if is_sqlite_database():
-        ensure_user_profile_photo_column()
-        ensure_logement_advanced_columns()
-        ensure_colocation_year_column()
-        ensure_logement_type_column()
-        ensure_logement_availability_date_column()
+    ensure_user_profile_photo_column()
+    ensure_logement_advanced_columns()
+    ensure_colocation_year_column()
+    ensure_logement_type_column()
+    ensure_logement_availability_date_column()
     seed_database()
     remove_demo_housing()
     remove_demo_users()
@@ -2252,13 +2141,13 @@ def contrat(id):
 def ajouter_annonce():
     if request.method == "POST":
         description = request.form["description"].strip()
-        uploaded_media, media_error = save_uploaded_media_list(request.files.getlist("media"))
+        uploaded_media = save_uploaded_media(request.files.get("media"))
 
         if not description_has_max_30_lines(description):
             flash("La description ne doit pas dÃ©passer 30 lignes.", "error")
             return redirect(url_for("ajouter_annonce"))
-        if media_error:
-            flash(media_error, "error")
+        if request.files.get("media") and request.files["media"].filename and not uploaded_media:
+            flash("Format mÃ©dia non autorisÃ©. Utilisez jpg, png, webp, mp4, webm ou mov.", "error")
             return redirect(url_for("ajouter_annonce"))
 
         logement = Logement(
@@ -2275,16 +2164,13 @@ def ajouter_annonce():
             latitude=float(request.form["latitude"]) if request.form.get("latitude") else guess_coordinates(request.form["quartier"].strip())[0],
             longitude=float(request.form["longitude"]) if request.form.get("longitude") else guess_coordinates(request.form["quartier"].strip())[1],
             est_colocation=request.form.get("est_colocation") == "1",
-            photos=(uploaded_media[0] if uploaded_media else request.form.get("photos") or "marrakech-rooftop-sunset.jpg"),
+            photos=uploaded_media or request.form.get("photos") or "marrakech-rooftop-sunset.jpg",
             est_disponible=True,
             date_disponibilite=request.form["date_disponibilite"],
             est_valide=True,
             proprietaire_id=current_user.proprietaire.id,
         )
         db.session.add(logement)
-        db.session.flush()
-        for ordre, media_path in enumerate(uploaded_media):
-            db.session.add(LogementMedia(logement_id=logement.id, fichier=media_path, ordre=ordre))
         db.session.commit()
         flash("Annonce ajoutÃ©e avec succÃ¨s. Elle est maintenant visible dans les logements.", "success")
         return redirect(url_for("dashboard_proprietaire"))
@@ -2302,13 +2188,13 @@ def modifier_annonce(id):
 
     if request.method == "POST":
         description = request.form["description"].strip()
-        uploaded_media, media_error = save_uploaded_media_list(request.files.getlist("media"))
+        uploaded_media = save_uploaded_media(request.files.get("media"))
 
         if not description_has_max_30_lines(description):
             flash("La description ne doit pas dÃ©passer 30 lignes.", "error")
             return redirect(url_for("modifier_annonce", id=logement.id))
-        if media_error:
-            flash(media_error, "error")
+        if request.files.get("media") and request.files["media"].filename and not uploaded_media:
+            flash("Format mÃ©dia non autorisÃ©. Utilisez jpg, png, webp, mp4, webm ou mov.", "error")
             return redirect(url_for("modifier_annonce", id=logement.id))
 
         logement.titre = request.form["titre"].strip()
@@ -2324,13 +2210,7 @@ def modifier_annonce(id):
         logement.latitude = float(request.form["latitude"]) if request.form.get("latitude") else guess_coordinates(logement.quartier)[0]
         logement.longitude = float(request.form["longitude"]) if request.form.get("longitude") else guess_coordinates(logement.quartier)[1]
         logement.est_colocation = request.form.get("est_colocation") == "1"
-        if uploaded_media:
-            logement.photos = uploaded_media[0]
-            next_order = len(logement.medias)
-            for index, media_path in enumerate(uploaded_media):
-                db.session.add(LogementMedia(logement_id=logement.id, fichier=media_path, ordre=next_order + index))
-        elif request.form.get("photos") and not logement.medias and not (logement.photos or "").startswith("uploads/"):
-            logement.photos = request.form.get("photos")
+        logement.photos = uploaded_media or request.form.get("photos") or logement.photos
         logement.est_disponible = True
         logement.date_disponibilite = request.form["date_disponibilite"]
         logement.est_valide = True
@@ -2354,7 +2234,6 @@ def supprimer_annonce(id):
     Visite.query.filter_by(logement_id=logement.id).delete()
     Incident.query.filter_by(logement_id=logement.id).delete()
     InventaireItem.query.filter_by(logement_id=logement.id).delete()
-    LogementMedia.query.filter_by(logement_id=logement.id).delete()
     Avis.query.filter_by(logement_id=logement.id).delete()
     Reservation.query.filter_by(logement_id=logement.id).delete()
     db.session.delete(logement)
@@ -2409,5 +2288,4 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug_mode = os.environ.get("FLASK_DEBUG", "0") == "1"
     app.run(host="0.0.0.0", port=port, debug=debug_mode)
-
 
