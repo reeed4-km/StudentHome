@@ -8,7 +8,7 @@ from functools import wraps
 from flask import Flask, flash, jsonify, redirect, render_template, request, send_file, session, url_for
 from flask_login import LoginManager, UserMixin, current_user, login_required, login_user, logout_user
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import or_, text
+from sqlalchemy import inspect, or_, text
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
@@ -1120,12 +1120,14 @@ def ensure_non_admin_roles():
         db.session.commit()
 
 
-
-   def ensure_user_profile_photo_column():
+def ensure_user_profile_photo_column():
     inspector = inspect(db.engine)
     columns = [column["name"] for column in inspector.get_columns("utilisateur")]
+
     if "photo_profil" not in columns:
-        db.session.execute(text("ALTER TABLE utilisateur ADD COLUMN photo_profil VARCHAR(220)"))
+        db.session.execute(
+            text("ALTER TABLE utilisateur ADD COLUMN photo_profil VARCHAR(220)")
+        )
         db.session.commit()
 
 def ensure_logement_advanced_columns():
