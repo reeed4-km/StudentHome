@@ -1149,10 +1149,13 @@ def ensure_logement_advanced_columns():
 
 
 def ensure_colocation_year_column():
-    columns = db.session.execute(text("PRAGMA table_info(profil_colocation)")).fetchall()
-    column_names = [column[1] for column in columns]
+    inspector = inspect(db.engine)
+    column_names = [column["name"] for column in inspector.get_columns("profil_colocation")]
+
     if "annee_universitaire" not in column_names:
-        db.session.execute(text("ALTER TABLE profil_colocation ADD COLUMN annee_universitaire INTEGER DEFAULT 1"))
+        db.session.execute(
+            text("ALTER TABLE profil_colocation ADD COLUMN annee_universitaire VARCHAR(50)")
+        )
         db.session.commit()
 
 
@@ -1173,19 +1176,24 @@ def init_database():
 
 
 def ensure_logement_type_column():
-    # SQLite ne modifie pas automatiquement les tables deja creees par db.create_all().
-    columns = db.session.execute(text("PRAGMA table_info(logement)")).fetchall()
-    column_names = [column[1] for column in columns]
+    inspector = inspect(db.engine)
+    column_names = [column["name"] for column in inspector.get_columns("logement")]
+
     if "type_logement" not in column_names:
-        db.session.execute(text("ALTER TABLE logement ADD COLUMN type_logement VARCHAR(80) DEFAULT 'Studio'"))
+        db.session.execute(
+            text("ALTER TABLE logement ADD COLUMN type_logement VARCHAR(80) DEFAULT 'Studio'")
+        )
         db.session.commit()
 
 
 def ensure_logement_availability_date_column():
-    columns = db.session.execute(text("PRAGMA table_info(logement)")).fetchall()
-    column_names = [column[1] for column in columns]
+    inspector = inspect(db.engine)
+    column_names = [column["name"] for column in inspector.get_columns("logement")]
+
     if "date_disponibilite" not in column_names:
-        db.session.execute(text("ALTER TABLE logement ADD COLUMN date_disponibilite VARCHAR(20)"))
+        db.session.execute(
+            text("ALTER TABLE logement ADD COLUMN date_disponibilite VARCHAR(20)")
+        )
         db.session.commit()
 
 
