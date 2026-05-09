@@ -145,8 +145,12 @@ mediaTriggers.forEach((button) => {
 
 document.querySelectorAll(".media-input").forEach((input) => {
   input.addEventListener("change", () => {
-    const file = input.files && input.files[0];
-    if (file && selectedMediaName) {
+    const files = input.files ? Array.from(input.files) : [];
+    if (files.length && selectedMediaName) {
+      const firstNames = files.slice(0, 3).map((file) => file.name).join(", ");
+      const moreText = files.length > 3 ? ` +${files.length - 3} autre(s)` : "";
+      selectedMediaName.textContent = `${files.length} fichier(s) : ${firstNames}${moreText}`;
+      const file = { name: `${files.length} fichier(s) : ${firstNames}${moreText}` };
       selectedMediaName.textContent = `Fichier sélectionné : ${file.name}`;
     }
   });

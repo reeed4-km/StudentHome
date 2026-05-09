@@ -1214,7 +1214,18 @@ textarea {
   padding: 52px 7%;
 }
 
-.detail > img,
+.detail-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  align-content: start;
+}
+
+.detail-gallery .detail-media:first-child {
+  grid-column: 1 / -1;
+}
+
+.detail-gallery img,
 .detail-media {
   width: 100%;
   min-height: 430px;
@@ -1223,6 +1234,11 @@ textarea {
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
   background: #0f172a;
+}
+
+.detail-gallery .detail-media:not(:first-child) {
+  min-height: 190px;
+  max-height: 260px;
 }
 
 .inline-form,
@@ -1904,7 +1920,7 @@ footer {
     height: 170px;
   }
 
-  .detail > img,
+  .detail-gallery .detail-media,
   .detail-media {
     min-height: 260px;
   }

@@ -17,6 +17,7 @@ UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
 ALLOWED_MEDIA_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "mp4", "webm", "mov"}
 VIDEO_EXTENSIONS = {"mp4", "webm", "mov"}
 PROFILE_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
+MAX_ANNONCE_MEDIA = 20
 ADMIN_EMAIL = "redakouchtam@icloud.com"
 ADMIN_DEFAULT_PASSWORD = "Admin@12345"
 SUPPORTED_LANGUAGES = {"fr", "en", "ar"}
@@ -708,16 +709,40 @@ class Logement(db.Model):
     proprietaire = db.relationship("Proprietaire", backref="logements")
     reservations = db.relationship("Reservation", backref="logement", cascade="all, delete")
     avis = db.relationship("Avis", backref="logement", cascade="all, delete")
+    medias = db.relationship(
+        "LogementMedia",
+        backref="logement",
+        cascade="all, delete-orphan",
+        order_by="LogementMedia.ordre",
+    )
 
     @property
     def media_path(self):
-        if self.photos.startswith("uploads/"):
+        if self.photos and self.photos.startswith("uploads/"):
             return self.photos
-        return "images/" + self.photos
+        return "images/" + (self.photos or "marrakech-rooftop-sunset.jpg")
 
     @property
     def is_video(self):
-        extension = self.photos.rsplit(".", 1)[-1].lower()
+        extension = (self.photos or "").rsplit(".", 1)[-1].lower()
+        return extension in VIDEO_EXTENSIONS
+
+
+class LogementMedia(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    logement_id = db.Column(db.Integer, db.ForeignKey("logement.id"), nullable=False)
+    fichier = db.Column(db.String(220), nullable=False)
+    ordre = db.Column(db.Integer, default=0)
+
+    @property
+    def media_path(self):
+        if self.fichier.startswith("uploads/"):
+            return self.fichier
+        return "images/" + self.fichier
+
+    @property
+    def is_video(self):
+        extension = self.fichier.rsplit(".", 1)[-1].lower()
         return extension in VIDEO_EXTENSIONS
 
 
@@ -915,6 +940,27 @@ def save_uploaded_media(file_storage):
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     file_storage.save(os.path.join(UPLOAD_FOLDER, saved_name))
     return "uploads/" + saved_name
+
+
+def save_uploaded_media_list(file_list, limit=MAX_ANNONCE_MEDIA):
+    files = [file for file in file_list if file and file.filename]
+    if len(files) > limit:
+        return [], f"Vous pouvez ajouter {limit} fichiers maximum par annonce."
+
+    saved_files = []
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+    for index, file_storage in enumerate(files, start=1):
+        if not is_allowed_media(file_storage.filename):
+            return [], "Format media non autorise. Utilisez jpg, png, webp, mp4, webm ou mov."
+
+        filename = secure_filename(file_storage.filename)
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
+        saved_name = f"{timestamp}_{index}_{filename}"
+        file_storage.save(os.path.join(UPLOAD_FOLDER, saved_name))
+        saved_files.append("uploads/" + saved_name)
+
+    return saved_files, None
 
 
 def save_uploaded_profile_image(file_storage):
@@ -2145,13 +2191,13 @@ def contrat(id):
 def ajouter_annonce():
     if request.method == "POST":
         description = request.form["description"].strip()
-        uploaded_media = save_uploaded_media(request.files.get("media"))
+        uploaded_media, media_error = save_uploaded_media_list(request.files.getlist("media"))
 
         if not description_has_max_30_lines(description):
             flash("La description ne doit pas dÃ©passer 30 lignes.", "error")
             return redirect(url_for("ajouter_annonce"))
-        if request.files.get("media") and request.files["media"].filename and not uploaded_media:
-            flash("Format mÃ©dia non autorisÃ©. Utilisez jpg, png, webp, mp4, webm ou mov.", "error")
+        if media_error:
+            flash(media_error, "error")
             return redirect(url_for("ajouter_annonce"))
 
         logement = Logement(
@@ -2168,13 +2214,16 @@ def ajouter_annonce():
             latitude=float(request.form["latitude"]) if request.form.get("latitude") else guess_coordinates(request.form["quartier"].strip())[0],
             longitude=float(request.form["longitude"]) if request.form.get("longitude") else guess_coordinates(request.form["quartier"].strip())[1],
             est_colocation=request.form.get("est_colocation") == "1",
-            photos=uploaded_media or request.form.get("photos") or "marrakech-rooftop-sunset.jpg",
+            photos=(uploaded_media[0] if uploaded_media else request.form.get("photos") or "marrakech-rooftop-sunset.jpg"),
             est_disponible=True,
             date_disponibilite=request.form["date_disponibilite"],
             est_valide=True,
             proprietaire_id=current_user.proprietaire.id,
         )
         db.session.add(logement)
+        db.session.flush()
+        for ordre, media_path in enumerate(uploaded_media):
+            db.session.add(LogementMedia(logement_id=logement.id, fichier=media_path, ordre=ordre))
         db.session.commit()
         flash("Annonce ajoutÃ©e avec succÃ¨s. Elle est maintenant visible dans les logements.", "success")
         return redirect(url_for("dashboard_proprietaire"))
@@ -2192,13 +2241,13 @@ def modifier_annonce(id):
 
     if request.method == "POST":
         description = request.form["description"].strip()
-        uploaded_media = save_uploaded_media(request.files.get("media"))
+        uploaded_media, media_error = save_uploaded_media_list(request.files.getlist("media"))
 
         if not description_has_max_30_lines(description):
             flash("La description ne doit pas dÃ©passer 30 lignes.", "error")
             return redirect(url_for("modifier_annonce", id=logement.id))
-        if request.files.get("media") and request.files["media"].filename and not uploaded_media:
-            flash("Format mÃ©dia non autorisÃ©. Utilisez jpg, png, webp, mp4, webm ou mov.", "error")
+        if media_error:
+            flash(media_error, "error")
             return redirect(url_for("modifier_annonce", id=logement.id))
 
         logement.titre = request.form["titre"].strip()
@@ -2214,7 +2263,13 @@ def modifier_annonce(id):
         logement.latitude = float(request.form["latitude"]) if request.form.get("latitude") else guess_coordinates(logement.quartier)[0]
         logement.longitude = float(request.form["longitude"]) if request.form.get("longitude") else guess_coordinates(logement.quartier)[1]
         logement.est_colocation = request.form.get("est_colocation") == "1"
-        logement.photos = uploaded_media or request.form.get("photos") or logement.photos
+        if uploaded_media:
+            logement.photos = uploaded_media[0]
+            next_order = len(logement.medias)
+            for index, media_path in enumerate(uploaded_media):
+                db.session.add(LogementMedia(logement_id=logement.id, fichier=media_path, ordre=next_order + index))
+        elif request.form.get("photos"):
+            logement.photos = request.form.get("photos")
         logement.est_disponible = True
         logement.date_disponibilite = request.form["date_disponibilite"]
         logement.est_valide = True
@@ -2238,6 +2293,7 @@ def supprimer_annonce(id):
     Visite.query.filter_by(logement_id=logement.id).delete()
     Incident.query.filter_by(logement_id=logement.id).delete()
     InventaireItem.query.filter_by(logement_id=logement.id).delete()
+    LogementMedia.query.filter_by(logement_id=logement.id).delete()
     Avis.query.filter_by(logement_id=logement.id).delete()
     Reservation.query.filter_by(logement_id=logement.id).delete()
     db.session.delete(logement)

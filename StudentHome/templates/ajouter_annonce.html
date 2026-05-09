@@ -62,17 +62,20 @@
         <label>Reglement interieur</label>
         <textarea name="reglement_interieur" rows="4" placeholder="Calme, visiteurs, animaux, entretien...">{{ logement.reglement_interieur if logement and logement.reglement_interieur else '' }}</textarea>
 
-        <label>Image ou video du logement</label>
+        <label>Images ou videos du logement</label>
         <div class="media-picker">
-            <input class="media-input" id="media-file" type="file" name="media" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime">
-            <input class="media-input" id="media-library" type="file" name="media" accept="image/*,video/*">
+            <input class="media-input" id="media-file" type="file" name="media" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" multiple>
+            <input class="media-input" id="media-library" type="file" name="media" accept="image/*,video/*" multiple>
             <input class="media-input" id="media-camera" type="file" name="media" accept="image/*" capture="environment">
             <div class="media-actions">
                 <button class="btn btn-light media-trigger" type="button" data-target="media-file">Importer fichier</button>
                 <button class="btn btn-light media-trigger" type="button" data-target="media-library">Phototheque</button>
                 <button class="btn btn-light media-trigger" type="button" data-target="media-camera">Appareil photo</button>
             </div>
-            <p class="form-help selected-media-name">Aucun fichier selectionne.</p>
+            <p class="form-help selected-media-name">Aucun fichier selectionne. Vous pouvez ajouter jusqu'a 20 images ou videos.</p>
+            {% if logement and logement.medias %}
+                <p class="form-help">{{ logement.medias|length }} fichier(s) deja dans la galerie. Les nouveaux fichiers seront ajoutes a la suite.</p>
+            {% endif %}
         </div>
 
         <label>Image par defaut si aucun fichier n'est importe</label>

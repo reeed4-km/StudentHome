@@ -2,11 +2,21 @@
 {% block title %}{{ logement.titre }} - StudentHome{% endblock %}
 {% block content %}
 <section class="detail">
-    {% if logement.is_video %}
-        <video class="detail-media" src="{{ url_for('static', filename=logement.media_path) }}" controls playsinline></video>
-    {% else %}
-        <img src="{{ url_for('static', filename=logement.media_path) }}" alt="{{ logement.titre }}">
-    {% endif %}
+    <div class="detail-gallery">
+        {% if logement.medias %}
+            {% for media in logement.medias %}
+                {% if media.is_video %}
+                    <video class="detail-media" src="{{ url_for('static', filename=media.media_path) }}" controls playsinline></video>
+                {% else %}
+                    <img class="detail-media" src="{{ url_for('static', filename=media.media_path) }}" alt="{{ logement.titre }}">
+                {% endif %}
+            {% endfor %}
+        {% elif logement.is_video %}
+            <video class="detail-media" src="{{ url_for('static', filename=logement.media_path) }}" controls playsinline></video>
+        {% else %}
+            <img class="detail-media" src="{{ url_for('static', filename=logement.media_path) }}" alt="{{ logement.titre }}">
+        {% endif %}
+    </div>
     <div>
         <p class="tag">{{ logement.quartier }} - {{ logement.proximite_faculte }}</p>
         <h1>{{ logement.titre }}</h1>
