@@ -1120,6 +1120,10 @@ def ensure_non_admin_roles():
         db.session.commit()
 
 
+def is_sqlite_database():
+    return db.engine.url.get_backend_name() == "sqlite"
+
+
 def ensure_user_profile_photo_column():
     columns = db.session.execute(text("PRAGMA table_info(utilisateur)")).fetchall()
     column_names = [column[1] for column in columns]
@@ -1159,11 +1163,12 @@ def init_database():
     # La base est crÃ©Ã©e automatiquement au lancement.
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     db.create_all()
-    ensure_user_profile_photo_column()
-    ensure_logement_advanced_columns()
-    ensure_colocation_year_column()
-    ensure_logement_type_column()
-    ensure_logement_availability_date_column()
+    if is_sqlite_database():
+        ensure_user_profile_photo_column()
+        ensure_logement_advanced_columns()
+        ensure_colocation_year_column()
+        ensure_logement_type_column()
+        ensure_logement_availability_date_column()
     seed_database()
     remove_demo_housing()
     remove_demo_users()
