@@ -723,6 +723,17 @@ class Logement(db.Model):
         return "images/" + (self.photos or "marrakech-rooftop-sunset.jpg")
 
     @property
+    def media_exists(self):
+        return os.path.exists(os.path.join(BASE_DIR, "static", self.media_path))
+
+    @property
+    def visible_medias(self):
+        available_medias = [media for media in self.medias if media.media_exists]
+        if available_medias:
+            return available_medias
+        return []
+
+    @property
     def is_video(self):
         extension = (self.photos or "").rsplit(".", 1)[-1].lower()
         return extension in VIDEO_EXTENSIONS
@@ -739,6 +750,10 @@ class LogementMedia(db.Model):
         if self.fichier.startswith("uploads/"):
             return self.fichier
         return "images/" + self.fichier
+
+    @property
+    def media_exists(self):
+        return os.path.exists(os.path.join(BASE_DIR, "static", self.media_path))
 
     @property
     def is_video(self):
