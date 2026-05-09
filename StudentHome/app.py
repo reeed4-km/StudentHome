@@ -1121,7 +1121,6 @@ def ensure_non_admin_roles():
 
 
 def ensure_user_profile_photo_column():
-    columns = db.session.execute(text("PRAGMA table_info(utilisateur)")).fetchall()
     column_names = [column[1] for column in columns]
     if "photo_profil" not in column_names:
         db.session.execute(text("ALTER TABLE utilisateur ADD COLUMN photo_profil VARCHAR(220)"))
