@@ -27,7 +27,7 @@
         <h2>{{ logement.prix|int }} DH / {{ t('month') }}</h2>
         {% if logement.adresse %}<p><strong>Adresse :</strong> {{ logement.adresse }}</p>{% endif %}
         {% if logement.date_disponibilite %}
-            <p class="availability-date">{{ t('available_from') }} {{ logement.date_disponibilite }}</p>
+            <p class="availability-date">{{ logement.availability_text }}</p>
         {% endif %}
         {% if logement.reglement_interieur %}
             <div class="info-panel"><h3>Règlement intérieur</h3><p>{{ logement.reglement_interieur }}</p></div>

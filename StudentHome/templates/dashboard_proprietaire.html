@@ -35,7 +35,7 @@
                 <p>{{ logement.prix|int }} DH - {{ logement.quartier }}</p>
                 <p><strong>{{ logement.vues or 0 }} consultations</strong> - {{ logement.favoris|length }} favoris - {{ logement.visites|length }} visites</p>
                 {% if logement.date_disponibilite %}
-                    <p class="availability-date">Disponible a partir du {{ logement.date_disponibilite }}</p>
+                    <p class="availability-date">{{ logement.availability_text }}</p>
                 {% endif %}
                 <p class="status {{ 'ok' if logement.est_disponible else 'off' }}">
                     {{ 'Visible' if logement.est_disponible else 'Indisponible' }}

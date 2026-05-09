@@ -16,7 +16,7 @@
             <p class="availability-date">À {{ distances.get(logement.id) }} km de la faculté choisie</p>
         {% endif %}
         {% if logement.date_disponibilite %}
-            <p class="availability-date">{{ t('available_from') }} {{ logement.date_disponibilite }}</p>
+            <p class="availability-date">{{ logement.availability_text }}</p>
         {% endif %}
         <p class="status {{ 'ok' if logement.est_disponible else 'off' }}">
             {{ t('available') if logement.est_disponible else t('unavailable') }}

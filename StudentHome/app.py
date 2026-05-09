@@ -718,6 +718,8 @@ class Logement(db.Model):
 
     @property
     def media_path(self):
+        if self.visible_medias:
+            return self.visible_medias[0].media_path
         if self.photos and self.photos.startswith("uploads/"):
             return self.photos
         return "images/" + (self.photos or "marrakech-rooftop-sunset.jpg")
@@ -735,8 +737,20 @@ class Logement(db.Model):
 
     @property
     def is_video(self):
-        extension = (self.photos or "").rsplit(".", 1)[-1].lower()
+        extension = self.media_path.rsplit(".", 1)[-1].lower()
         return extension in VIDEO_EXTENSIONS
+
+    @property
+    def availability_text(self):
+        if not self.date_disponibilite:
+            return ""
+        try:
+            available_date = date.fromisoformat(self.date_disponibilite)
+        except ValueError:
+            return "Disponible a partir du " + self.date_disponibilite
+        if available_date <= date.today():
+            return "Disponible dès le " + self.date_disponibilite
+        return "Disponible a partir du " + self.date_disponibilite
 
 
 class LogementMedia(db.Model):
@@ -2283,7 +2297,7 @@ def modifier_annonce(id):
             next_order = len(logement.medias)
             for index, media_path in enumerate(uploaded_media):
                 db.session.add(LogementMedia(logement_id=logement.id, fichier=media_path, ordre=next_order + index))
-        elif request.form.get("photos"):
+        elif request.form.get("photos") and not logement.medias and not (logement.photos or "").startswith("uploads/"):
             logement.photos = request.form.get("photos")
         logement.est_disponible = True
         logement.date_disponibilite = request.form["date_disponibilite"]
