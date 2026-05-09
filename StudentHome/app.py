@@ -682,7 +682,7 @@ class Proprietaire(db.Model):
     est_verifie = db.Column(db.Boolean, default=False)
 
 
-class logement(db.Model):
+class Logement(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     titre = db.Column(db.String(160), nullable=False)
     adresse = db.Column(db.String(220), nullable=True)
