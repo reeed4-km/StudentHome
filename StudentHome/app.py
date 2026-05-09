@@ -8,7 +8,7 @@ from functools import wraps
 from flask import Flask, flash, jsonify, redirect, render_template, request, send_file, session, url_for
 from flask_login import LoginManager, UserMixin, current_user, login_required, login_user, logout_user
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import or_, text
+from sqlalchemy import inspect, or_, text
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
@@ -731,12 +731,20 @@ class Logement(db.Model):
         return "images/marrakech-rooftop-sunset.jpg"
 
     @property
+    def media_url(self):
+        if self.visible_medias:
+            return self.visible_medias[0].media_url
+        if os.path.exists(os.path.join(BASE_DIR, "static", self.raw_media_path)):
+            return url_for("static", filename=self.raw_media_path)
+        return url_for("static", filename="images/marrakech-rooftop-sunset.jpg")
+
+    @property
     def media_exists(self):
         return os.path.exists(os.path.join(BASE_DIR, "static", self.raw_media_path))
 
     @property
     def visible_medias(self):
-        available_medias = [media for media in self.medias if media.media_exists]
+        available_medias = [media for media in self.medias if media.is_available]
         if available_medias:
             return available_medias
         return []
@@ -763,6 +771,8 @@ class LogementMedia(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     logement_id = db.Column(db.Integer, db.ForeignKey("logement.id"), nullable=False)
     fichier = db.Column(db.String(220), nullable=False)
+    mime_type = db.Column(db.String(80), nullable=True)
+    data = db.Column(db.LargeBinary, nullable=True)
     ordre = db.Column(db.Integer, default=0)
 
     @property
@@ -774,6 +784,16 @@ class LogementMedia(db.Model):
     @property
     def media_exists(self):
         return os.path.exists(os.path.join(BASE_DIR, "static", self.media_path))
+
+    @property
+    def is_available(self):
+        return bool(self.data) or self.media_exists
+
+    @property
+    def media_url(self):
+        if self.data:
+            return url_for("logement_media_file", media_id=self.id)
+        return url_for("static", filename=self.media_path)
 
     @property
     def is_video(self):
@@ -992,8 +1012,14 @@ def save_uploaded_media_list(file_list, limit=MAX_ANNONCE_MEDIA):
         filename = secure_filename(file_storage.filename)
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
         saved_name = f"{timestamp}_{index}_{filename}"
-        file_storage.save(os.path.join(UPLOAD_FOLDER, saved_name))
-        saved_files.append("uploads/" + saved_name)
+        file_bytes = file_storage.read()
+        with open(os.path.join(UPLOAD_FOLDER, saved_name), "wb") as media_file:
+            media_file.write(file_bytes)
+        saved_files.append({
+            "path": "uploads/" + saved_name,
+            "data": file_bytes,
+            "mime_type": file_storage.mimetype or "application/octet-stream",
+        })
 
     return saved_files, None
 
