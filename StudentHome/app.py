@@ -717,16 +717,22 @@ class Logement(db.Model):
     )
 
     @property
-    def media_path(self):
-        if self.visible_medias:
-            return self.visible_medias[0].media_path
+    def raw_media_path(self):
         if self.photos and self.photos.startswith("uploads/"):
             return self.photos
         return "images/" + (self.photos or "marrakech-rooftop-sunset.jpg")
 
     @property
+    def media_path(self):
+        if self.visible_medias:
+            return self.visible_medias[0].media_path
+        if os.path.exists(os.path.join(BASE_DIR, "static", self.raw_media_path)):
+            return self.raw_media_path
+        return "images/marrakech-rooftop-sunset.jpg"
+
+    @property
     def media_exists(self):
-        return os.path.exists(os.path.join(BASE_DIR, "static", self.media_path))
+        return os.path.exists(os.path.join(BASE_DIR, "static", self.raw_media_path))
 
     @property
     def visible_medias(self):
