@@ -1132,10 +1132,8 @@ def ensure_user_profile_photo_column():
 
 def ensure_logement_advanced_columns():
     inspector = inspect(db.engine)
-    columns = [column["name"] for column in inspector.get_columns("logement")]
-    column_names = [column[1] for column in columns]
+    column_names = [column["name"] for column in inspector.get_columns("logement")]
     advanced_columns = {
-        "adresse": "VARCHAR(220)",
         "reglement_interieur": "TEXT",
         "nombre_chambres": "INTEGER DEFAULT 1",
         "etage": "INTEGER DEFAULT 0",
