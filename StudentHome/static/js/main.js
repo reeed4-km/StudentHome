@@ -156,6 +156,84 @@ document.querySelectorAll(".media-input").forEach((input) => {
   });
 });
 
+const galleryItems = Array.from(document.querySelectorAll(".gallery-item"));
+const lightbox = document.querySelector(".media-lightbox");
+
+if (galleryItems.length && lightbox) {
+  const stage = lightbox.querySelector(".lightbox-stage");
+  const closeButton = lightbox.querySelector(".lightbox-close");
+  const prevButton = lightbox.querySelector(".lightbox-prev");
+  const nextButton = lightbox.querySelector(".lightbox-next");
+  let currentIndex = 0;
+
+  const renderLightboxItem = () => {
+    const item = galleryItems[currentIndex];
+    const src = item.dataset.gallerySrc || item.getAttribute("src");
+    const type = item.dataset.galleryType || "image";
+    stage.innerHTML = "";
+
+    const element = document.createElement(type === "video" ? "video" : "img");
+    element.src = src;
+    if (type === "video") {
+      element.controls = true;
+      element.autoplay = true;
+      element.playsInline = true;
+    } else {
+      element.alt = item.getAttribute("alt") || "Photo du logement";
+    }
+    stage.appendChild(element);
+  };
+
+  const openLightbox = (index) => {
+    currentIndex = index;
+    renderLightboxItem();
+    lightbox.classList.add("is-open");
+    lightbox.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+  };
+
+  const closeLightbox = () => {
+    lightbox.classList.remove("is-open");
+    lightbox.setAttribute("aria-hidden", "true");
+    stage.innerHTML = "";
+    document.body.style.overflow = "";
+  };
+
+  const moveLightbox = (step) => {
+    currentIndex = (currentIndex + step + galleryItems.length) % galleryItems.length;
+    renderLightboxItem();
+  };
+
+  galleryItems.forEach((item, index) => {
+    item.addEventListener("click", () => openLightbox(index));
+  });
+
+  closeButton.addEventListener("click", closeLightbox);
+  prevButton.addEventListener("click", () => moveLightbox(-1));
+  nextButton.addEventListener("click", () => moveLightbox(1));
+
+  lightbox.addEventListener("click", (event) => {
+    if (event.target === lightbox) {
+      closeLightbox();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (!lightbox.classList.contains("is-open")) {
+      return;
+    }
+    if (event.key === "Escape") {
+      closeLightbox();
+    }
+    if (event.key === "ArrowLeft") {
+      moveLightbox(-1);
+    }
+    if (event.key === "ArrowRight") {
+      moveLightbox(1);
+    }
+  });
+}
+
 const housingMap = document.querySelector("#housing-map");
 const mapToggle = document.querySelector(".map-toggle");
 

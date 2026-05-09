@@ -6,15 +6,15 @@
         {% if logement.medias %}
             {% for media in logement.medias %}
                 {% if media.is_video %}
-                    <video class="detail-media" src="{{ url_for('static', filename=media.media_path) }}" controls playsinline></video>
+                    <video class="detail-media gallery-item" src="{{ url_for('static', filename=media.media_path) }}" controls playsinline data-gallery-src="{{ url_for('static', filename=media.media_path) }}" data-gallery-type="video"></video>
                 {% else %}
-                    <img class="detail-media" src="{{ url_for('static', filename=media.media_path) }}" alt="{{ logement.titre }}">
+                    <img class="detail-media gallery-item" src="{{ url_for('static', filename=media.media_path) }}" alt="{{ logement.titre }}" data-gallery-src="{{ url_for('static', filename=media.media_path) }}" data-gallery-type="image">
                 {% endif %}
             {% endfor %}
         {% elif logement.is_video %}
-            <video class="detail-media" src="{{ url_for('static', filename=logement.media_path) }}" controls playsinline></video>
+            <video class="detail-media gallery-item" src="{{ url_for('static', filename=logement.media_path) }}" controls playsinline data-gallery-src="{{ url_for('static', filename=logement.media_path) }}" data-gallery-type="video"></video>
         {% else %}
-            <img class="detail-media" src="{{ url_for('static', filename=logement.media_path) }}" alt="{{ logement.titre }}">
+            <img class="detail-media gallery-item" src="{{ url_for('static', filename=logement.media_path) }}" alt="{{ logement.titre }}" data-gallery-src="{{ url_for('static', filename=logement.media_path) }}" data-gallery-type="image">
         {% endif %}
     </div>
     <div>
@@ -83,6 +83,13 @@
         {% endif %}
     </div>
 </section>
+
+<div class="media-lightbox" aria-hidden="true">
+    <button class="lightbox-close" type="button" aria-label="Fermer">x</button>
+    <button class="lightbox-nav lightbox-prev" type="button" aria-label="Image precedente">‹</button>
+    <div class="lightbox-stage"></div>
+    <button class="lightbox-nav lightbox-next" type="button" aria-label="Image suivante">›</button>
+</div>
 
 <section class="section">
     <h2>Avis visibles</h2>
