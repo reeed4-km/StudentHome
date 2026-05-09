@@ -643,6 +643,7 @@ TRANSLATIONS["ar"].update({
 })
 
 app = Flask(__name__)
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-key")
 cloudinary.config(
     cloud_name="TON_CLOUD_NAME",
     api_key="TON_API_KEY",
