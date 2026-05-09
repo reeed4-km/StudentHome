@@ -1,4 +1,6 @@
-﻿import os
+﻿import cloudinary
+import cloudinary.uploader
+import os
 import re
 import io
 import math
@@ -641,8 +643,18 @@ TRANSLATIONS["ar"].update({
 })
 
 app = Flask(__name__)
-app.config.from_object(Config)
+cloudinary.config(
+    cloud_name="TON_CLOUD_NAME",
+    api_key="TON_API_KEY",
+    api_secret="TON_API_SECRET",
+    secure=True
+)
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
+    "DATABASE_URL",
+    "sqlite:///studenthome.db"
+)
 
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
@@ -925,12 +937,8 @@ def save_uploaded_profile_image(file_storage):
     if "." not in file_storage.filename or extension not in PROFILE_IMAGE_EXTENSIONS:
         return None
 
-    filename = secure_filename(file_storage.filename)
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    saved_name = f"profile_{timestamp}_{filename}"
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    file_storage.save(os.path.join(UPLOAD_FOLDER, saved_name))
-    return "uploads/" + saved_name
+    result = cloudinary.uploader.upload(file_storage)
+    return result["secure_url"]
 
 
 def save_uploaded_document(file_storage):
@@ -2288,10 +2296,6 @@ def confirmer_conformite(id):
     return redirect(url_for("dashboard_proprietaire"))
 
 
-with app.app_context():
-    init_database()
-with app.app_context():
-    db.create_all()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

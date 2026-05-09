@@ -6,15 +6,15 @@
         {% if logement.visible_medias %}
             {% for media in logement.visible_medias %}
                 {% if media.is_video %}
-                    <video class="detail-media gallery-item" src="{{ url_for('static', filename=media.media_path) }}" controls playsinline data-gallery-src="{{ url_for('static', filename=media.media_path) }}" data-gallery-type="video"></video>
+                    <video class="detail-media gallery-item" src="{{ media.media_path }}" controls playsinline data-gallery-src="{{ media.media_path }}" data-gallery-type="video"></video>
                 {% else %}
-                    <img class="detail-media gallery-item" src="{{ url_for('static', filename=media.media_path) }}" alt="{{ logement.titre }}" data-gallery-src="{{ url_for('static', filename=media.media_path) }}" data-gallery-type="image">
+                    <img class="detail-media gallery-item" src="{{ media.media_path }}" alt="{{ logement.titre }}" data-gallery-src="{{ media.media_path }}" data-gallery-type="image">
                 {% endif %}
             {% endfor %}
         {% elif logement.media_exists and logement.is_video %}
-            <video class="detail-media gallery-item" src="{{ url_for('static', filename=logement.media_path) }}" controls playsinline data-gallery-src="{{ url_for('static', filename=logement.media_path) }}" data-gallery-type="video"></video>
+            <video class="detail-media gallery-item" src="{{ logement.media_path }}" controls playsinline data-gallery-src="{{ logement.media_path }}" data-gallery-type="video"></video>
         {% elif logement.media_exists %}
-            <img class="detail-media gallery-item" src="{{ url_for('static', filename=logement.media_path) }}" alt="{{ logement.titre }}" data-gallery-src="{{ url_for('static', filename=logement.media_path) }}" data-gallery-type="image">
+            <img class="detail-media gallery-item" src="{{ logement.media_path }}" alt="{{ logement.titre }}" data-gallery-src="{{ logement.media_path }}" data-gallery-type="image">
         {% else %}
             <img class="detail-media gallery-item" src="{{ url_for('static', filename='images/marrakech-rooftop-sunset.jpg') }}" alt="{{ logement.titre }}" data-gallery-src="{{ url_for('static', filename='images/marrakech-rooftop-sunset.jpg') }}" data-gallery-type="image">
         {% endif %}
