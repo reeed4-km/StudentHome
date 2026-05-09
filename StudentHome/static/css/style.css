@@ -28,6 +28,7 @@
   --shadow-md: 0 18px 45px rgba(37, 99, 235, 0.12);
   --radius: 8px;
   --ease: 180ms ease;
+  --sidebar-width: 300px;
 }
 
 * {
@@ -40,7 +41,7 @@ html {
 
 body {
   margin: 0;
-  padding-left: 250px;
+  padding-left: var(--sidebar-width);
   color: var(--text);
   background: var(--bg);
   font-family: var(--font-body);
@@ -130,12 +131,13 @@ textarea {
   font-size: clamp(18px, 2vw, 24px);
   font-weight: 800;
   line-height: 1;
+  white-space: nowrap;
 }
 
 .brand-logo {
-  width: 46px;
-  height: 46px;
-  flex: 0 0 46px;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
   border-radius: 50%;
   object-fit: cover;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.14);
@@ -175,7 +177,7 @@ textarea {
   z-index: 30;
   display: flex;
   flex-direction: column;
-  width: 250px;
+  width: var(--sidebar-width);
   height: 100vh;
   max-height: 100vh;
   padding: 18px 14px;
@@ -188,8 +190,11 @@ textarea {
 }
 
 .sidebar-brand {
-  padding: 8px 10px 18px;
+  width: 100%;
+  padding: 8px 8px 18px;
   margin-bottom: 8px;
+  font-size: 23px;
+  overflow: visible;
 }
 
 .side-links {
@@ -1679,7 +1684,7 @@ footer {
   color: var(--muted);
   font-size: var(--fs-sm);
   text-align: center;
-  margin-left: 250px;
+  margin-left: var(--sidebar-width);
 }
 
 [dir="rtl"] body,
