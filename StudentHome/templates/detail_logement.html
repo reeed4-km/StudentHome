@@ -6,9 +6,9 @@
         {% if logement.visible_medias %}
             {% for media in logement.visible_medias %}
                 {% if media.is_video %}
-                    <video class="detail-media gallery-item" src="{{ media.media_path }}" controls playsinline data-gallery-src="{{ media.media_path }}" data-gallery-type="video"></video>
+                    <video class="detail-media gallery-item" src="{{ media.fichier }}" controls playsinline data-gallery-src="{{ media.fichier }}" data-gallery-type="video"></video>
                 {% else %}
-                    <img class="detail-media gallery-item" src="{{ media.media_path }}" alt="{{ logement.titre }}" data-gallery-src="{{ media.media_path }}" data-gallery-type="image">
+                    <img class="detail-media gallery-item" src="{{ media.fichier }}" alt="{{ logement.titre }}" data-gallery-src="{{ media.fichier }}" data-gallery-type="image">
                 {% endif %}
             {% endfor %}
         {% elif logement.media_exists and logement.is_video %}
