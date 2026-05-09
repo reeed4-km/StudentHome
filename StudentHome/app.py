@@ -1131,7 +1131,8 @@ def ensure_user_profile_photo_column():
         db.session.commit()
 
 def ensure_logement_advanced_columns():
-    columns = db.session.execute(text("PRAGMA table_info(logement)")).fetchall()
+    inspector = inspect(db.engine)
+    columns = [column["name"] for column in inspector.get_columns("logement")]
     column_names = [column[1] for column in columns]
     advanced_columns = {
         "adresse": "VARCHAR(220)",
