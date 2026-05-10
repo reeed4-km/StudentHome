@@ -2268,6 +2268,7 @@ def supprimer_annonce(id):
         return redirect(url_for("dashboard_proprietaire"))
 
     try:
+        db.session.execute(db.text("DELETE FROM logement_media WHERE logement_id = :id"), {"id": logement.id})
         Incident.query.filter_by(logement_id=logement.id).delete()
         InventaireItem.query.filter_by(logement_id=logement.id).delete()
         Favori.query.filter_by(logement_id=logement.id).delete()
