@@ -28,8 +28,12 @@
             {% if logement.is_video %}
                 <video class="card-media" src="{{ logement.media_path }}" muted playsinline preload="metadata"></video>
             {% else %}
-                <img src="{{ logement.media_path }}" alt="{{ logement.titre }}">
-            {% endif %}
+<img
+    src="{{ logement.media_path }}"
+    alt="Logement"
+    onerror="this.onerror=null; this.src=this.dataset.fallback;"
+    data-fallback="{{ url_for('static', filename='images/default.jpg') }}"
+>
             <div class="card-body">
                 <h3>{{ logement.titre }}</h3>
                 <p>{{ logement.prix|int }} DH - {{ logement.quartier }}</p>
