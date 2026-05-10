@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Mot de passe oublié - StudentHome{% endblock %}
+{% block content %}
+<section class="auth">
+    <form class="form-card login-card" method="post">
+        <div class="register-head">
+            <div>
+                <p class="tag">Sécurité</p>
+                <h1>Mot de passe oublié</h1>
+            </div>
+        </div>
+
+        <div class="login-grid">
+            <div class="field">
+                <label>Type de compte</label>
+                <select name="role" class="recovery-role" required>
+                    <option value="etudiant">Étudiant</option>
+                    <option value="proprietaire">Propriétaire</option>
+                </select>
+            </div>
+            <div class="field">
+                <label>Méthode de vérification</label>
+                <select name="methode" required>
+                    <option value="gmail">Gmail</option>
+                    <option value="sms">SMS</option>
+                </select>
+            </div>
+            <div class="field field-wide">
+                <label>Information de récupération</label>
+                <input type="text" name="identifiant" class="recovery-identifier" placeholder="Code Massar étudiant ou téléphone propriétaire" required>
+                <p class="form-help">Étudiant : saisissez votre code Massar. Propriétaire : saisissez votre numéro de téléphone.</p>
+            </div>
+        </div>
+
+        <button class="btn btn-primary full" type="submit">Envoyer le code</button>
+        <a class="form-link" href="{{ url_for('login') }}">Retour à la connexion</a>
+    </form>
+</section>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Inscription - StudentHome{% endblock %}
+{% block content %}
+<section class="auth register-bg">
+    <form class="form-card register-card" method="post">
+        <div class="register-head">
+            <div>
+                <p class="tag">{{ t('nav_register') }}</p>
+                <h1>{{ t('register_title') }}</h1>
+            </div>
+            <p class="role-pill">{{ t('student') if selected_role == 'etudiant' else t('owner') }} · <a href="{{ url_for('choisir_role', next=next_url) }}">{{ t('change') }}</a></p>
+        </div>
+        {% if next_url %}
+            <p>{{ t('register_continue_text') }}</p>
+            <input type="hidden" name="next" value="{{ next_url }}">
+        {% endif %}
+        <input type="hidden" name="role" value="{{ selected_role }}">
+
+        <div class="register-grid">
+            <div class="field">
+                <label>{{ t('full_name') }}</label>
+                <input type="text" name="nom" required>
+            </div>
+            <div class="field">
+                <label>{{ t('email') }}</label>
+                <input type="email" name="email" required>
+            </div>
+            <div class="field field-wide">
+                <label>{{ t('password') }}</label>
+                <input type="password" name="mot_de_passe" placeholder="{{ t('strong_password_placeholder') }}" required>
+            </div>
+        </div>
+
+        <div class="student-fields register-grid {{ 'hidden' if selected_role != 'etudiant' else '' }}">
+            <div class="field">
+                <label>{{ t('faculty') }}</label>
+                <input type="text" name="faculte_uca" placeholder="FSSM, FLSH, ENCG..." {% if selected_role == 'etudiant' %}required{% endif %}>
+            </div>
+            <div class="field">
+                <label>{{ t('massar_code') }}</label>
+                <input type="text" name="numero_etudiant" placeholder="{{ t('massar_example') }}" {% if selected_role == 'etudiant' %}required{% endif %}>
+            </div>
+        </div>
+
+        <div class="owner-fields register-grid {{ 'hidden' if selected_role != 'proprietaire' else '' }}">
+            <div class="field field-wide">
+                <label>{{ t('phone') }}</label>
+                <input type="text" name="telephone" placeholder="06...">
+            </div>
+        </div>
+        <button class="btn btn-primary full" type="submit">{{ t('create_the_account') }}</button>
+    </form>
+</section>
+{% endblock %}
