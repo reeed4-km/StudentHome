@@ -23,45 +23,45 @@
     </div>
 
     <div class="cards">
-        {% for logement in logements %}
-        <article class="card">
-            {% if logement.is_video %}
-                <video class="card-media" src="{{ logement.media_path }}" muted playsinline preload="metadata"></video>
-            {% else %}
-{% if logement.media_path %}
-<img
-    src="{{ logement.media_path }}"
-    alt="Logement"
-    onerror="this.onerror=null; this.src=this.dataset.fallback;"
-    data-fallback="{{ url_for('static', filename='images/default.jpg') }}"
->
-{% else %}
-<img
-    src="{{ url_for('static', filename='images/default.jpg') }}"
-    alt="Logement"
->
-{% endif %}
-            <div class="card-body">
-                <h3>{{ logement.titre }}</h3>
-                <p>{{ logement.prix|int }} DH - {{ logement.quartier }}</p>
-                <p><strong>{{ logement.vues or 0 }} consultations</strong> - {{ logement.favoris|length }} favoris - {{ logement.visites|length }} visites</p>
-                {% if logement.date_disponibilite %}
-                    <p class="availability-date">{{ logement.availability_text }}</p>
-                {% endif %}
-                <p class="status {{ 'ok' if logement.est_disponible else 'off' }}">
-                    {{ 'Visible' if logement.est_disponible else 'Indisponible' }}
-                </p>
-                <div class="table-actions">
-                    <a class="btn btn-small" href="{{ url_for('modifier_annonce', id=logement.id) }}">Modifier</a>
-                    <a class="btn btn-small btn-secondary" href="{{ url_for('inventaire', id=logement.id) }}">Inventaire</a>
-                    <form class="inline-delete-form" method="post" action="{{ url_for('supprimer_annonce', id=logement.id) }}">
-                        <button class="btn btn-small btn-danger" type="submit">Supprimer</button>
-                    </form>
-                </div>
+    {% for logement in logements %}
+    <article class="card">
+
+        {% if logement.is_video %}
+            <video class="card-media" src="{{ logement.media_path }}" muted playsinline preload="metadata"></video>
+        {% else %}
+            <img
+                src="{{ logement.media_path }}"
+                alt="Logement"
+                onerror="this.onerror=null; this.src=this.dataset.fallback;"
+                data-fallback="{{ url_for('static', filename='images/marrakech-rooftop-sunset.jpg') }}"
+            >
+        {% endif %}
+
+        <div class="card-body">
+            <h3>{{ logement.titre }}</h3>
+            <p>{{ logement.prix|int }} DH - {{ logement.quartier }}</p>
+            <p><strong>{{ logement.vues or 0 }} consultations</strong> - {{ logement.favoris|length }} favoris - {{ logement.visites|length }} visites</p>
+
+            {% if logement.date_disponibilite %}
+                <p class="availability-date">{{ logement.availability_text }}</p>
+            {% endif %}
+
+            <p class="status {{ 'ok' if logement.est_disponible else 'off' }}">
+                {{ 'Visible' if logement.est_disponible else 'Indisponible' }}
+            </p>
+
+            <div class="table-actions">
+                <a class="btn btn-small" href="{{ url_for('modifier_annonce', id=logement.id) }}">Modifier</a>
+                <a class="btn btn-small btn-secondary" href="{{ url_for('inventaire', id=logement.id) }}">Inventaire</a>
+                <form class="inline-delete-form" method="post" action="{{ url_for('supprimer_annonce', id=logement.id) }}">
+                    <button class="btn btn-small btn-danger" type="submit">Supprimer</button>
+                </form>
             </div>
-        </article>
-        {% endfor %}
-    </div>
+        </div>
+
+    </article>
+    {% endfor %}
+</div>
 
     <h2>Calendrier des visites</h2>
     <div class="table-wrap">
