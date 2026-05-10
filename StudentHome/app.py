@@ -2272,7 +2272,8 @@ def supprimer_annonce(id):
       Message.query.filter_by(logement_id=logement.id).delete()
       Visite.query.filter_by(logement_id=logement.id).delete()
       Avis.query.filter_by(logement_id=logement.id).delete()
-
+      db.session.query(LogementMedia).filter(LogementMedia.logement_id == logement.id).delete(synchronize_session=False)
+      
       db.session.delete(logement)
       db.session.commit()
 
