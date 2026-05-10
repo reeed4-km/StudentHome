@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Erreur serveur - StudentHome{% endblock %}
+{% block content %}
+<div style="text-align:center; padding: 4rem 2rem;">
+    <h1 style="font-size:5rem; color:#1a3c8f; margin:0;">500</h1>
+    <h2>Erreur interne du serveur</h2>
+    <p>Une erreur inattendue s'est produite. Veuillez réessayer dans quelques instants.</p>
+    <a class="btn btn-primary" href="{{ url_for('studenthome_marrakech') }}">Retour à l'accueil</a>
+</div>
+{% endblock %}

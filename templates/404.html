@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Page introuvable - StudentHome{% endblock %}
+{% block content %}
+<div style="text-align:center; padding: 4rem 2rem;">
+    <h1 style="font-size:5rem; color:#1a3c8f; margin:0;">404</h1>
+    <h2>Page introuvable</h2>
+    <p>La page que vous cherchez n'existe pas ou a été déplacée.</p>
+    <a class="btn btn-primary" href="{{ url_for('studenthome_marrakech') }}">Retour à l'accueil</a>
+</div>
+{% endblock %}
