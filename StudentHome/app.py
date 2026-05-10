@@ -2268,33 +2268,27 @@ def supprimer_annonce(id):
         return redirect(url_for("dashboard_proprietaire"))
 
     try:
-        Favori.query.filter_by(logement_id=logement.id).delete()
-        Message.query.filter_by(logement_id=logement.id).delete()
-        Visite.query.filter_by(logement_id=logement.id).delete()
-        Incident.query.filter_by(logement_id=logement.id).delete()
-        InventaireItem.query.filter_by(logement_id=logement.id).delete()
-        Avis.query.filter_by(logement_id=logement.id).delete()
-        Reservation.query.filter_by(logement_id=logement.id).delete()
+      Favori.query.filter_by(logement_id=logement.id).delete()
+      Message.query.filter_by(logement_id=logement.id).delete()
+      Visite.query.filter_by(logement_id=logement.id).delete()
+      Avis.query.filter_by(logement_id=logement.id).delete()
 
-        db.session.delete(logement)
-        db.session.commit()
+      db.session.delete(logement)
+      db.session.commit()
 
-        flash("Annonce supprimée avec succès.", "success")
+      flash("Annonce supprimée avec succès.", "success")
 
     except Exception as e:
-        db.session.rollback()
-        print("ERREUR SUPPRESSION ANNONCE :", e)
-        flash("Erreur lors de la suppression de l’annonce.", "error")
+     db.session.rollback()
+     print("ERREUR :", e)
+     flash(f"Erreur : {e}", "error")
 
     return redirect(url_for("dashboard_proprietaire"))
 
     Favori.query.filter_by(logement_id=logement.id).delete()
     Message.query.filter_by(logement_id=logement.id).delete()
     Visite.query.filter_by(logement_id=logement.id).delete()
-    Incident.query.filter_by(logement_id=logement.id).delete()
-    InventaireItem.query.filter_by(logement_id=logement.id).delete()
     Avis.query.filter_by(logement_id=logement.id).delete()
-    Reservation.query.filter_by(logement_id=logement.id).delete()
     db.session.delete(logement)
     db.session.commit()
     if True:
