@@ -2268,14 +2268,15 @@ def supprimer_annonce(id):
         return redirect(url_for("dashboard_proprietaire"))
 
     try:
-      Favori.query.filter_by(logement_id=logement.id).delete()
-      Message.query.filter_by(logement_id=logement.id).delete()
-      Visite.query.filter_by(logement_id=logement.id).delete()
-      Avis.query.filter_by(logement_id=logement.id).delete()
-      db.session.query(LogementMedia).filter(LogementMedia.logement_id == logement.id).delete(synchronize_session=False)
-      
-      db.session.delete(logement)
-      db.session.commit()
+        Incident.query.filter_by(logement_id=logement.id).delete()
+        InventaireItem.query.filter_by(logement_id=logement.id).delete()
+        Favori.query.filter_by(logement_id=logement.id).delete()
+        Message.query.filter_by(logement_id=logement.id).delete()
+        Visite.query.filter_by(logement_id=logement.id).delete()
+        Avis.query.filter_by(logement_id=logement.id).delete()
+        Reservation.query.filter_by(logement_id=logement.id).delete()
+        db.session.delete(logement)
+        db.session.commit()
 
       flash("Annonce supprimée avec succès.", "success")
 
@@ -2284,16 +2285,6 @@ def supprimer_annonce(id):
      print("ERREUR :", e)
      flash(f"Erreur : {e}", "error")
 
-    return redirect(url_for("dashboard_proprietaire"))
-
-    Favori.query.filter_by(logement_id=logement.id).delete()
-    Message.query.filter_by(logement_id=logement.id).delete()
-    Visite.query.filter_by(logement_id=logement.id).delete()
-    Avis.query.filter_by(logement_id=logement.id).delete()
-    db.session.delete(logement)
-    db.session.commit()
-    if True:
-        flash("Annonce supprimÃ©e.", "success")
     return redirect(url_for("dashboard_proprietaire"))
 
 
