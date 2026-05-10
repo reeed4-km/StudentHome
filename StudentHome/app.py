@@ -934,22 +934,25 @@ def save_uploaded_media(file_storage):
     if not is_allowed_media(file_storage.filename):
         return None
 
-    extension = file_storage.filename.rsplit(".", 1)[-1].lower()
-
-    if extension in VIDEO_EXTENSIONS:
+    try:
+        extension = file_storage.filename.rsplit(".", 1)[-1].lower()
+        resource_type = "video" if extension in VIDEO_EXTENSIONS else "image"
         result = cloudinary.uploader.upload(
             file_storage,
-            resource_type="video",
+            resource_type=resource_type,
             folder="studenthome/annonces"
         )
-    else:
-        result = cloudinary.uploader.upload(
-            file_storage,
-            resource_type="image",
-            folder="studenthome/annonces"
-        )
+        return result["secure_url"]
+    except Exception as e:
+        print("Cloudinary upload error:", e)
+        return None
 
-    return result["secure_url"]
+
+def get_first_valid_upload(files_list):
+    for f in files_list:
+        if f and f.filename:
+            return f
+    return None
 
 
 def save_uploaded_profile_image(file_storage):
@@ -2180,38 +2183,47 @@ def contrat(id):
 def ajouter_annonce():
     if request.method == "POST":
         description = request.form["description"].strip()
-        uploaded_media = save_uploaded_media(request.files.getlist("media")[0]) if request.files.getlist("media") else None
         if not description_has_max_30_lines(description):
-            flash("La description ne doit pas dÃ©passer 30 lignes.", "error")
-            return redirect(url_for("ajouter_annonce"))
-        if request.files.get("media") and request.files["media"].filename and not uploaded_media:
-            flash("Format mÃ©dia non autorisÃ©. Utilisez jpg, png, webp, mp4, webm ou mov.", "error")
+            flash("La description ne doit pas dépasser 30 lignes.", "error")
             return redirect(url_for("ajouter_annonce"))
 
-        logement = Logement(
-            titre=request.form["titre"].strip(),
-            adresse=request.form.get("adresse", "").strip(),
-            description=description,
-            reglement_interieur=request.form.get("reglement_interieur", "").strip(),
-            prix=float(request.form["prix"]),
-            quartier=request.form["quartier"].strip(),
-            proximite_faculte=request.form["proximite_faculte"].strip(),
-            type_logement=request.form["type_logement"],
-            nombre_chambres=int(request.form.get("nombre_chambres") or 1),
-            etage=int(request.form.get("etage") or 0),
-            latitude=float(request.form["latitude"]) if request.form.get("latitude") else guess_coordinates(request.form["quartier"].strip())[0],
-            longitude=float(request.form["longitude"]) if request.form.get("longitude") else guess_coordinates(request.form["quartier"].strip())[1],
-            est_colocation=request.form.get("est_colocation") == "1",
-            photos=uploaded_media or request.form.get("photos") or "marrakech-rooftop-sunset.jpg",
-            est_disponible=True,
-            date_disponibilite=request.form["date_disponibilite"],
-            est_valide=True,
-            proprietaire_id=current_user.proprietaire.id,
-        )
-        db.session.add(logement)
-        db.session.commit()
-        flash("Annonce ajoutÃ©e avec succÃ¨s. Elle est maintenant visible dans les logements.", "success")
-        return redirect(url_for("dashboard_proprietaire"))
+        selected_file = get_first_valid_upload(request.files.getlist("media"))
+        uploaded_media = save_uploaded_media(selected_file) if selected_file else None
+        if selected_file and not uploaded_media:
+            flash("Format média non autorisé ou erreur d'upload. Utilisez jpg, png, webp, mp4, webm ou mov.", "error")
+            return redirect(url_for("ajouter_annonce"))
+
+        try:
+            quartier = request.form["quartier"].strip()
+            logement = Logement(
+                titre=request.form["titre"].strip(),
+                adresse=request.form.get("adresse", "").strip(),
+                description=description,
+                reglement_interieur=request.form.get("reglement_interieur", "").strip(),
+                prix=float(request.form["prix"]),
+                quartier=quartier,
+                proximite_faculte=request.form.get("proximite_faculte", "").strip(),
+                type_logement=request.form["type_logement"],
+                nombre_chambres=int(request.form.get("nombre_chambres") or 1),
+                etage=int(request.form.get("etage") or 0),
+                latitude=float(request.form["latitude"]) if request.form.get("latitude") else guess_coordinates(quartier)[0],
+                longitude=float(request.form["longitude"]) if request.form.get("longitude") else guess_coordinates(quartier)[1],
+                est_colocation=request.form.get("est_colocation") == "1",
+                photos=uploaded_media or request.form.get("photos") or "marrakech-rooftop-sunset.jpg",
+                est_disponible=True,
+                date_disponibilite=request.form.get("date_disponibilite", ""),
+                est_valide=True,
+                proprietaire_id=current_user.proprietaire.id,
+            )
+            db.session.add(logement)
+            db.session.commit()
+            flash("Annonce ajoutée avec succès. Elle est maintenant visible dans les logements.", "success")
+            return redirect(url_for("dashboard_proprietaire"))
+        except Exception as e:
+            db.session.rollback()
+            print("ERREUR ajouter_annonce:", e)
+            flash(f"Erreur lors de l'ajout : {e}", "error")
+            return redirect(url_for("ajouter_annonce"))
     return render_template("ajouter_annonce.html", logement=None)
 
 
@@ -2226,34 +2238,43 @@ def modifier_annonce(id):
 
     if request.method == "POST":
         description = request.form["description"].strip()
-        uploaded_media = save_uploaded_media(request.files.getlist("media")[0]) if request.files.getlist("media") else None
         if not description_has_max_30_lines(description):
-            flash("La description ne doit pas dÃ©passer 30 lignes.", "error")
-            return redirect(url_for("modifier_annonce", id=logement.id))
-        if request.files.get("media") and request.files["media"].filename and not uploaded_media:
-            flash("Format mÃ©dia non autorisÃ©. Utilisez jpg, png, webp, mp4, webm ou mov.", "error")
+            flash("La description ne doit pas dépasser 30 lignes.", "error")
             return redirect(url_for("modifier_annonce", id=logement.id))
 
-        logement.titre = request.form["titre"].strip()
-        logement.adresse = request.form.get("adresse", "").strip()
-        logement.description = description
-        logement.reglement_interieur = request.form.get("reglement_interieur", "").strip()
-        logement.prix = float(request.form["prix"])
-        logement.quartier = request.form["quartier"].strip()
-        logement.proximite_faculte = request.form["proximite_faculte"].strip()
-        logement.type_logement = request.form["type_logement"]
-        logement.nombre_chambres = int(request.form.get("nombre_chambres") or 1)
-        logement.etage = int(request.form.get("etage") or 0)
-        logement.latitude = float(request.form["latitude"]) if request.form.get("latitude") else guess_coordinates(logement.quartier)[0]
-        logement.longitude = float(request.form["longitude"]) if request.form.get("longitude") else guess_coordinates(logement.quartier)[1]
-        logement.est_colocation = request.form.get("est_colocation") == "1"
-        logement.photos = uploaded_media or request.form.get("photos") or logement.photos
-        logement.est_disponible = True
-        logement.date_disponibilite = request.form["date_disponibilite"]
-        logement.est_valide = True
-        db.session.commit()
-        flash("Annonce modifiÃ©e avec succÃ¨s.", "success")
-        return redirect(url_for("dashboard_proprietaire"))
+        selected_file = get_first_valid_upload(request.files.getlist("media"))
+        uploaded_media = save_uploaded_media(selected_file) if selected_file else None
+        if selected_file and not uploaded_media:
+            flash("Format média non autorisé ou erreur d'upload. Utilisez jpg, png, webp, mp4, webm ou mov.", "error")
+            return redirect(url_for("modifier_annonce", id=logement.id))
+
+        try:
+            quartier = request.form["quartier"].strip()
+            logement.titre = request.form["titre"].strip()
+            logement.adresse = request.form.get("adresse", "").strip()
+            logement.description = description
+            logement.reglement_interieur = request.form.get("reglement_interieur", "").strip()
+            logement.prix = float(request.form["prix"])
+            logement.quartier = quartier
+            logement.proximite_faculte = request.form.get("proximite_faculte", "").strip()
+            logement.type_logement = request.form["type_logement"]
+            logement.nombre_chambres = int(request.form.get("nombre_chambres") or 1)
+            logement.etage = int(request.form.get("etage") or 0)
+            logement.latitude = float(request.form["latitude"]) if request.form.get("latitude") else guess_coordinates(quartier)[0]
+            logement.longitude = float(request.form["longitude"]) if request.form.get("longitude") else guess_coordinates(quartier)[1]
+            logement.est_colocation = request.form.get("est_colocation") == "1"
+            logement.photos = uploaded_media or request.form.get("photos") or logement.photos
+            logement.est_disponible = True
+            logement.date_disponibilite = request.form.get("date_disponibilite", "")
+            logement.est_valide = True
+            db.session.commit()
+            flash("Annonce modifiée avec succès.", "success")
+            return redirect(url_for("dashboard_proprietaire"))
+        except Exception as e:
+            db.session.rollback()
+            print("ERREUR modifier_annonce:", e)
+            flash(f"Erreur lors de la modification : {e}", "error")
+            return redirect(url_for("modifier_annonce", id=logement.id))
     return render_template("ajouter_annonce.html", logement=logement)
 
 
