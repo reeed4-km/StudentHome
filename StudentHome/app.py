@@ -645,9 +645,9 @@ TRANSLATIONS["ar"].update({
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-key")
 cloudinary.config(
-    cloud_name="TON_CLOUD_NAME",
-    api_key="TON_API_KEY",
-    api_secret="TON_API_SECRET",
+    cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.environ.get("CLOUDINARY_API_KEY"),
+    api_secret=os.environ.get("CLOUDINARY_API_SECRET"),
     secure=True
 )
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
@@ -724,9 +724,20 @@ class Logement(db.Model):
 
     @property
     def media_path(self):
-        if self.photos.startswith("uploads/"):
-            return self.photos
-        return "images/" + self.photos
+      if self.photos and self.photos.startswith("http"):
+        return self.photos
+
+      if self.photos and self.photos.startswith("uploads/"):
+        return url_for("static", filename=self.photos)
+
+      return url_for(
+        "static",
+        filename="images/" + (self.photos or "marrakech-rooftop-sunset.jpg")
+    )
+
+@property
+def media_exists(self):
+    return bool(self.photos)
 
     @property
     def is_video(self):
@@ -919,15 +930,26 @@ def is_allowed_media(filename):
 def save_uploaded_media(file_storage):
     if not file_storage or not file_storage.filename:
         return None
+
     if not is_allowed_media(file_storage.filename):
         return None
 
-    filename = secure_filename(file_storage.filename)
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    saved_name = f"{timestamp}_{filename}"
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    file_storage.save(os.path.join(UPLOAD_FOLDER, saved_name))
-    return "uploads/" + saved_name
+    extension = file_storage.filename.rsplit(".", 1)[-1].lower()
+
+    if extension in VIDEO_EXTENSIONS:
+        result = cloudinary.uploader.upload(
+            file_storage,
+            resource_type="video",
+            folder="studenthome/annonces"
+        )
+    else:
+        result = cloudinary.uploader.upload(
+            file_storage,
+            resource_type="image",
+            folder="studenthome/annonces"
+        )
+
+    return result["secure_url"]
 
 
 def save_uploaded_profile_image(file_storage):
@@ -2158,8 +2180,7 @@ def contrat(id):
 def ajouter_annonce():
     if request.method == "POST":
         description = request.form["description"].strip()
-        uploaded_media = save_uploaded_media(request.files.get("media"))
-
+        uploaded_media = save_uploaded_media(request.files.getlist("media")[0]) if request.files.getlist("media") else None
         if not description_has_max_30_lines(description):
             flash("La description ne doit pas dÃ©passer 30 lignes.", "error")
             return redirect(url_for("ajouter_annonce"))
@@ -2205,8 +2226,7 @@ def modifier_annonce(id):
 
     if request.method == "POST":
         description = request.form["description"].strip()
-        uploaded_media = save_uploaded_media(request.files.get("media"))
-
+        uploaded_media = save_uploaded_media(request.files.getlist("media")[0]) if request.files.getlist("media") else None
         if not description_has_max_30_lines(description):
             flash("La description ne doit pas dÃ©passer 30 lignes.", "error")
             return redirect(url_for("modifier_annonce", id=logement.id))
@@ -2242,9 +2262,31 @@ def modifier_annonce(id):
 @role_required("proprietaire")
 def supprimer_annonce(id):
     logement = Logement.query.get_or_404(id)
+
     if logement.proprietaire_id != current_user.proprietaire.id:
         flash("Vous ne pouvez supprimer que vos annonces.", "error")
         return redirect(url_for("dashboard_proprietaire"))
+
+    try:
+        Favori.query.filter_by(logement_id=logement.id).delete()
+        Message.query.filter_by(logement_id=logement.id).delete()
+        Visite.query.filter_by(logement_id=logement.id).delete()
+        Incident.query.filter_by(logement_id=logement.id).delete()
+        InventaireItem.query.filter_by(logement_id=logement.id).delete()
+        Avis.query.filter_by(logement_id=logement.id).delete()
+        Reservation.query.filter_by(logement_id=logement.id).delete()
+
+        db.session.delete(logement)
+        db.session.commit()
+
+        flash("Annonce supprimée avec succès.", "success")
+
+    except Exception as e:
+        db.session.rollback()
+        print("ERREUR SUPPRESSION ANNONCE :", e)
+        flash("Erreur lors de la suppression de l’annonce.", "error")
+
+    return redirect(url_for("dashboard_proprietaire"))
 
     Favori.query.filter_by(logement_id=logement.id).delete()
     Message.query.filter_by(logement_id=logement.id).delete()
