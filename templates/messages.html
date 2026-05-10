@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Messagerie - StudentHome{% endblock %}
+{% block content %}
+<section class="section">
+    <div class="section-title">
+        <div>
+            <p class="tag">{{ t('nav_messages') }}</p>
+            <h1>{{ t('messages_title') }}</h1>
+        </div>
+        <a class="btn btn-secondary" href="{{ url_for('logements') }}">{{ t('view_housing') }}</a>
+    </div>
+
+    <div class="messenger-shell">
+        <aside class="messenger-sidebar">
+            <div class="messenger-sidebar-head">
+                <h2>{{ t('discussions') }}</h2>
+                <span>{{ discussions|length }}</span>
+            </div>
+            <div class="message-list">
+                {% for discussion in discussions %}
+                    <a class="conversation-card" href="{{ url_for('discussion', logement_id=discussion.logement_id, etudiant_id=discussion.etudiant_id) }}">
+                        {% if discussion.logement.is_video %}
+                            <video src="{{ url_for('static', filename=discussion.logement.media_path) }}" muted playsinline preload="metadata"></video>
+                        {% else %}
+                            <img src="{{ url_for('static', filename=discussion.logement.media_path) }}" alt="{{ discussion.logement.titre }}">
+                        {% endif %}
+                        <div>
+                            {% if current_user.role == 'etudiant' %}
+                                <h3>{{ discussion.proprietaire.utilisateur.nom }}</h3>
+                            {% else %}
+                                <h3>{{ discussion.etudiant.utilisateur.nom }}</h3>
+                            {% endif %}
+                            <p>{{ discussion.logement.titre }}</p>
+                            <span>{{ discussion.contenu }}</span>
+                        </div>
+                        <small>{{ discussion.date_envoi }}</small>
+                    </a>
+                {% else %}
+                    <div class="empty-state">
+                        <h2>{{ t('no_discussion_title') }}</h2>
+                        <p>{{ t('no_discussion_text') }}</p>
+                    </div>
+                {% endfor %}
+            </div>
+        </aside>
+        <div class="messenger-preview">
+            <div class="messenger-preview-icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M21 11.5a8.5 8.5 0 0 1-12.7 7.4L3 20l1.2-5.1A8.5 8.5 0 1 1 21 11.5Z"></path>
+                    <path d="M8 10h8M8 14h5"></path>
+                </svg>
+            </div>
+            <h2>StudentHome Chat</h2>
+            <p>{{ t('chat_preview_text') }}</p>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Avis - StudentHome{% endblock %}
+{% block content %}
+<section class="auth">
+    <form class="form-card" method="post">
+        <h1>Laisser un avis</h1>
+        <p>{{ reservation.logement.titre }}</p>
+        <label>Note</label>
+        <select name="note" required>
+            <option value="5">5 - Excellent</option>
+            <option value="4">4 - Très bien</option>
+            <option value="3">3 - Correct</option>
+            <option value="2">2 - Moyen</option>
+            <option value="1">1 - Mauvais</option>
+        </select>
+        <label>Commentaire</label>
+        <textarea name="commentaire" required></textarea>
+        <button class="btn btn-primary full" type="submit">Publier l'avis</button>
+    </form>
+</section>
+{% endblock %}

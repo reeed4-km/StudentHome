@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Logements - StudentHome{% endblock %}
+{% block content %}
+<section class="section logements-bg">
+    <h1>{{ t('search_housing_title') }}</h1>
+    <form class="search-shell" method="get">
+        <div class="quick-search">
+            <input type="text" name="recherche" value="{{ filtres.get('recherche', '') }}" placeholder="{{ t('search_placeholder') }}">
+            <button class="btn btn-light filter-toggle" type="button" aria-expanded="false" aria-controls="advanced-filters">{{ t('filter') }}</button>
+            <button class="btn btn-primary" type="submit">{{ t('search') }}</button>
+        </div>
+
+        <div class="advanced-filters" id="advanced-filters">
+            <div>
+                <label>{{ t('sector_marrakech') }}</label>
+                <select name="quartier">
+                    <option value="">{{ t('all_sectors') }}</option>
+                    {% for secteur in secteurs %}
+                        <option value="{{ secteur }}" {% if filtres.get('quartier') == secteur %}selected{% endif %}>{{ secteur }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label>{{ t('near_faculty') }}</label>
+                <select name="faculte">
+                    <option value="">Toutes les facultes</option>
+                    {% for code, faculte in facultes.items() %}
+                        <option value="{{ code }}" {% if filtres.get('faculte') == code %}selected{% endif %}>{{ code }} - {{ faculte.nom }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label>{{ t('min_price') }}</label>
+                <input type="number" name="prix_min" value="{{ filtres.get('prix_min', '') }}" placeholder="1000">
+            </div>
+            <div>
+                <label>{{ t('max_price') }}</label>
+                <input type="number" name="prix_max" value="{{ filtres.get('prix_max', '') }}" placeholder="2500">
+            </div>
+            <div>
+                <label>{{ t('budget_recommendation') }}</label>
+                <input type="number" name="budget" value="{{ filtres.get('budget', '') }}" placeholder="Votre budget">
+            </div>
+            <div>
+                <label>{{ t('housing_type') }}</label>
+                <select name="type_logement">
+                    <option value="">{{ t('all_types') }}</option>
+                    {% for type_item in types_logement %}
+                        <option value="{{ type_item }}" {% if filtres.get('type_logement') == type_item %}selected{% endif %}>{{ type_item }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label>{{ t('min_rooms') }}</label>
+                <input type="number" name="chambres" value="{{ filtres.get('chambres', '') }}" min="1">
+            </div>
+            <div>
+                <label>{{ t('floor') }}</label>
+                <input type="number" name="etage" value="{{ filtres.get('etage', '') }}">
+            </div>
+            <div>
+                <label>{{ t('max_distance_faculty') }}</label>
+                <input type="number" step="0.1" name="distance_max" value="{{ filtres.get('distance_max', '') }}" placeholder="2">
+            </div>
+            <label class="check filter-check"><input type="checkbox" name="disponible" value="1" {% if filtres.get('disponible') == '1' %}checked{% endif %}> {{ t('available_only') }}</label>
+            <label class="check filter-check"><input type="checkbox" name="colocation" value="1" {% if filtres.get('colocation') == '1' %}checked{% endif %}> {{ t('colocation_only') }}</label>
+            <div class="filter-actions">
+                <a class="btn btn-light" href="{{ url_for('logements') }}">{{ t('reset') }}</a>
+                <button class="btn btn-secondary" type="submit">{{ t('apply_filters') }}</button>
+            </div>
+        </div>
+    </form>
+
+    <div class="map-panel">
+        <div class="section-title">
+            <div>
+                <p class="tag">{{ t('interactive_map') }}</p>
+                <h2>Logements et facultes UCA</h2>
+            </div>
+            <button class="btn btn-secondary map-toggle" type="button" aria-expanded="false" aria-controls="housing-map">{{ t('show_map') }}</button>
+        </div>
+        <div id="housing-map" class="is-hidden" data-logements='{{ map_logements|tojson }}' data-facultes='{{ map_facultes|tojson }}'></div>
+    </div>
+
+    {% if recommandations %}
+    <section class="recommendations">
+        <div class="section-title">
+            <h2>{{ t('recommended_housing') }}</h2>
+            <span>Matching budget, faculte, distance et type</span>
+        </div>
+        <div class="cards">
+            {% for logement in recommandations %}
+                {% include "_card_logement.html" %}
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <div class="cards">
+        {% for logement in logements %}
+            {% include "_card_logement.html" %}
+        {% else %}
+            <div class="empty-state wide-empty">
+                <h2>{{ t('no_listing_now') }}</h2>
+                <p>{{ t('no_listing_long') }}</p>
+                {% if current_user.is_authenticated and current_user.role == 'proprietaire' %}
+                    <a class="btn btn-primary" href="{{ url_for('ajouter_annonce') }}">{{ t('publish_first_listing') }}</a>
+                {% else %}
+                    <a class="btn btn-secondary" href="{{ url_for('register') }}">{{ t('create_owner_account') }}</a>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Paiement indisponible - StudentHome{% endblock %}
+{% block content %}
+<section class="payment">
+    <div class="form-card">
+        <h1>Paiement indisponible</h1>
+        <p>StudentHome ne propose pas encore le paiement en ligne. Le suivi de reservation reste disponible depuis votre tableau de bord.</p>
+        <a class="btn btn-primary full" href="{{ url_for('reservations') }}">Retour aux reservations</a>
+    </div>
+</section>
+{% endblock %}
