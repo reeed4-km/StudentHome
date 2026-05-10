@@ -2277,13 +2277,11 @@ def supprimer_annonce(id):
         Reservation.query.filter_by(logement_id=logement.id).delete()
         db.session.delete(logement)
         db.session.commit()
-
-      flash("Annonce supprimée avec succès.", "success")
-
+        flash("Annonce supprimée avec succès.", "success")
     except Exception as e:
-     db.session.rollback()
-     print("ERREUR :", e)
-     flash(f"Erreur : {e}", "error")
+        db.session.rollback()
+        print("ERREUR :", e)
+        flash(f"Erreur : {e}", "error")
 
     return redirect(url_for("dashboard_proprietaire"))
 
