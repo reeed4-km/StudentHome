@@ -8,13 +8,13 @@
                 {% if media.is_video %}
                     <video class="detail-media gallery-item" src="{{ media.fichier }}" controls playsinline data-gallery-src="{{ media.fichier }}" data-gallery-type="video"></video>
                 {% else %}
-                    <img class="detail-media gallery-item" src="{{ media.fichier }}" alt="{{ logement.titre }}" data-gallery-src="{{ media.fichier }}" data-gallery-type="image">
+                    <img class="detail-media gallery-item" src="{{ media.fichier }}" alt="{{ logement.titre }}" data-gallery-src="{{ media.fichier }}" data-gallery-type="image" onerror="this.onerror=null; this.src='{{ logement.fallback_media_path }}';">
                 {% endif %}
             {% endfor %}
         {% elif logement.media_exists and logement.is_video %}
             <video class="detail-media gallery-item" src="{{ logement.media_path }}" controls playsinline data-gallery-src="{{ logement.media_path }}" data-gallery-type="video"></video>
         {% elif logement.media_exists %}
-            <img class="detail-media gallery-item" src="{{ logement.media_path }}" alt="{{ logement.titre }}" data-gallery-src="{{ logement.media_path }}" data-gallery-type="image">
+            <img class="detail-media gallery-item" src="{{ logement.media_path }}" alt="{{ logement.titre }}" data-gallery-src="{{ logement.media_path }}" data-gallery-type="image" onerror="this.onerror=null; this.src='{{ logement.fallback_media_path }}';">
         {% else %}
             <img class="detail-media gallery-item" src="{{ url_for('static', filename='images/marrakech-rooftop-sunset.jpg') }}" alt="{{ logement.titre }}" data-gallery-src="{{ url_for('static', filename='images/marrakech-rooftop-sunset.jpg') }}" data-gallery-type="image">
         {% endif %}

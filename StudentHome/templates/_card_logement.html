@@ -2,7 +2,7 @@
     {% if logement.is_video %}
         <video class="card-media" src="{{ logement.media_path }}" muted playsinline preload="metadata"></video>
     {% else %}
-        <img src="{{ logement.media_path }}" alt="{{ logement.titre }}">
+        <img src="{{ logement.media_path }}" alt="{{ logement.titre }}" onerror="this.onerror=null; this.src='{{ logement.fallback_media_path }}';">
     {% endif %}
     <div class="card-body">
         <div class="card-top">

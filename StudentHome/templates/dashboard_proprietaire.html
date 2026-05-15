@@ -33,7 +33,7 @@
                 src="{{ logement.media_path }}"
                 alt="Logement"
                 onerror="this.onerror=null; this.src=this.dataset.fallback;"
-                data-fallback="{{ url_for('static', filename='images/marrakech-rooftop-sunset.jpg') }}"
+                data-fallback="{{ logement.fallback_media_path }}"
             >
         {% endif %}
 

@@ -7,7 +7,7 @@
             {% if logement.is_video %}
                 <video src="{{ logement.media_path }}" controls playsinline></video>
             {% else %}
-                <img src="{{ logement.media_path }}" alt="{{ logement.titre }}">
+                <img src="{{ logement.media_path }}" alt="{{ logement.titre }}" onerror="this.onerror=null; this.src='{{ logement.fallback_media_path }}';">
             {% endif %}
             <h1>{{ logement.titre }}</h1>
             <p>{{ logement.quartier }} - {{ t('close_to') }} {{ logement.proximite_faculte }}</p>

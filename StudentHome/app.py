@@ -19,6 +19,7 @@ from werkzeug.utils import secure_filename
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
+DEFAULT_HOUSING_IMAGE = "marrakech-rooftop-sunset.jpg"
 ALLOWED_MEDIA_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "mp4", "webm", "mov"}
 VIDEO_EXTENSIONS = {"mp4", "webm", "mov"}
 PROFILE_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
@@ -755,16 +756,25 @@ class Logement(db.Model):
 
     @property
     def media_path(self):
-      if self.photos and self.photos.startswith("http"):
-        return self.photos
+      photo = (self.photos or DEFAULT_HOUSING_IMAGE).strip()
 
-      if self.photos and self.photos.startswith("uploads/"):
-        return url_for("static", filename=self.photos)
+      if photo.startswith(("http://", "https://")):
+        return photo
 
-      return url_for(
-        "static",
-        filename="images/" + (self.photos or "marrakech-rooftop-sunset.jpg")
-      )
+      if photo.startswith("/static/"):
+        return photo
+
+      if photo.startswith("static/"):
+        return url_for("static", filename=photo.replace("static/", "", 1))
+
+      if photo.startswith(("uploads/", "images/")):
+        return url_for("static", filename=photo)
+
+      return url_for("static", filename="images/" + photo)
+
+    @property
+    def fallback_media_path(self):
+        return url_for("static", filename=f"images/{DEFAULT_HOUSING_IMAGE}")
 
     @property
     def media_exists(self):
@@ -1042,20 +1052,30 @@ def save_uploaded_media(file_storage):
 
     extension = file_storage.filename.rsplit(".", 1)[-1].lower()
 
-    if extension in VIDEO_EXTENSIONS:
-        result = cloudinary.uploader.upload(
-            file_storage,
-            resource_type="video",
-            folder="studenthome/annonces"
-        )
-    else:
-        result = cloudinary.uploader.upload(
-            file_storage,
-            resource_type="image",
-            folder="studenthome/annonces"
-        )
+    if CLOUDINARY_CONFIGURED:
+        try:
+            if extension in VIDEO_EXTENSIONS:
+                result = cloudinary.uploader.upload(
+                    file_storage,
+                    resource_type="video",
+                    folder="studenthome/annonces"
+                )
+            else:
+                result = cloudinary.uploader.upload(
+                    file_storage,
+                    resource_type="image",
+                    folder="studenthome/annonces"
+                )
+            return result["secure_url"]
+        except Exception as exc:
+            app.logger.warning("Cloudinary upload failed, saving locally: %s", exc)
 
-    return result["secure_url"]
+    filename = secure_filename(file_storage.filename)
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
+    saved_name = f"media_{timestamp}_{filename}"
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    file_storage.save(os.path.join(UPLOAD_FOLDER, saved_name))
+    return "uploads/" + saved_name
 
 
 def save_uploaded_profile_image(file_storage):
@@ -2522,7 +2542,8 @@ def contrat(id):
 def ajouter_annonce():
     if request.method == "POST":
         description = request.form["description"].strip()
-        uploaded_media = save_uploaded_media(request.files.getlist("media")[0]) if request.files.getlist("media") else None
+        media_files = [file for file in request.files.getlist("media") if file and file.filename]
+        uploaded_media = save_uploaded_media(media_files[0]) if media_files else None
         prix = parse_float(request.form.get("prix"))
         nombre_chambres = parse_int(request.form.get("nombre_chambres"), 1)
         etage = parse_int(request.form.get("etage"), 0)
@@ -2554,7 +2575,7 @@ def ajouter_annonce():
             latitude=latitude,
             longitude=longitude,
             est_colocation=request.form.get("est_colocation") == "1",
-            photos=uploaded_media or request.form.get("photos") or "marrakech-rooftop-sunset.jpg",
+            photos=uploaded_media or request.form.get("photos") or DEFAULT_HOUSING_IMAGE,
             est_disponible=True,
             date_disponibilite=request.form["date_disponibilite"],
             est_valide=True,
@@ -2585,7 +2606,8 @@ def modifier_annonce(id):
 
     if request.method == "POST":
         description = request.form["description"].strip()
-        uploaded_media = save_uploaded_media(request.files.getlist("media")[0]) if request.files.getlist("media") else None
+        media_files = [file for file in request.files.getlist("media") if file and file.filename]
+        uploaded_media = save_uploaded_media(media_files[0]) if media_files else None
         prix = parse_float(request.form.get("prix"))
         nombre_chambres = parse_int(request.form.get("nombre_chambres"), 1)
         etage = parse_int(request.form.get("etage"), 0)
