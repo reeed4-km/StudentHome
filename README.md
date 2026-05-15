@@ -1,102 +1,143 @@
 # StudentHome Marrakech
 
-StudentHome Marrakech est une application web Flask simple pour gérer des logements étudiants destinés aux étudiants de l'UCA.
+A web platform connecting UCA students with housing near their faculties in Marrakech. Built with Flask, deployed on Render.
 
-## Fonctionnalités
+**Live:** https://studenthome-marrakech.onrender.com
 
-- Inscription et connexion avec rôles : étudiant, propriétaire, administrateur limité
-- Connexion étudiant par code Massar
-- Validation du code Massar et mot de passe renforcé à l'inscription
-- Recherche de logements par faculté, quartier, prix et disponibilité
-- Consultation libre de l'accueil, des annonces et des détails sans connexion
-- Connexion ou inscription obligatoire seulement pour interagir : message, réservation, paiement, avis
-- Demande de réservation et suivi des statuts
-- Paiement sécurisé simulé par QR Code
-- Avis après réservation confirmée ou terminée
-- Ajout, modification et suppression d'annonces par le propriétaire
-- Tableau admin réservé à `redakouchtam@icloud.com`
+---
 
-## Installation
+## Features
 
-Ouvrir un terminal dans le dossier `StudentHome`, puis lancer :
+### For Students
+- Register with Massar code (validated format) and secure password
+- Browse listings without an account — login required only to interact
+- Search by faculty, neighbourhood, price, and availability
+- Request reservations and track status in real time
+- Simulated secure payment via QR Code
+- Leave reviews after a confirmed or completed stay
+- Messaging with landlords
+- Favourites list
+- Colocation matching — find compatible roommates
+- Document vault (coffre-fort) for storing personal files
+- Budget calculator for shared housing
 
-```bash
-pip install -r requirements.txt
-python app.py
+### For Landlords (Propriétaires)
+- Publish, edit, and delete listings
+- Upload up to 10 photos per listing (stored on Cloudinary)
+- Manage reservation requests (accept / reject)
+- Generate rental contracts
+- Inventory management per listing
+- Messaging with tenants
+
+### For Admins
+- Full dashboard — users, listings, reservations overview
+- Moderate content and manage accounts
+
+### Platform
+- Multilingual interface (French, English, Arabic)
+- Interactive map per faculty (Leaflet.js)
+- Responsive design
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Backend | Python 3 / Flask |
+| Database | SQLite (local) · PostgreSQL (production) |
+| ORM | Flask-SQLAlchemy |
+| Auth | Flask-Login + Werkzeug password hashing |
+| Media storage | Cloudinary |
+| Server | Waitress (dev) · Gunicorn (prod) |
+| Deployment | Render |
+
+---
+
+## Project Structure
+
 ```
-
-Ensuite, ouvrir l'adresse affichée par Flask, généralement :
-
-```text
-http://127.0.0.1:5000
-```
-
-Lien direct nommé :
-
-```text
-http://127.0.0.1:5000/studenthome-marrakech
-```
-
-## AccÃ¨s depuis Internet
-
-Pour ouvrir StudentHome depuis n'importe quel appareil, mÃªme hors du mÃªme Wi-Fi, l'application doit Ãªtre hÃ©bergÃ©e en ligne.
-
-Option simple avec Render :
-
-1. CrÃ©er un compte sur Render.
-2. Envoyer le dossier `StudentHome` sur GitHub.
-3. CrÃ©er un nouveau `Web Service` depuis le dÃ©pÃ´t GitHub.
-4. Utiliser ces commandes :
-
-```bash
-pip install -r requirements.txt
-waitress-serve --host=0.0.0.0 --port=$PORT app:app
-```
-
-Le fichier `render.yaml` est aussi prÃªt pour un dÃ©ploiement automatique avec le nom :
-
-```text
-studenthome-marrakech
-```
-
-L'adresse publique ressemblera Ã  :
-
-```text
-https://studenthome-marrakech.onrender.com
-```
-
-Pour taper exactement `studenthome-marrakech` sans extension, il faut configurer un DNS privÃ©, un routeur, ou le fichier `hosts` de chaque appareil. Sur Internet public, un vrai nom de domaine est nÃ©cessaire, par exemple :
-
-```text
-studenthome-marrakech.com
-```
-
-## Comptes de test
-
-- Étudiant : `G123456789` / `Etudiant@123`
-- Propriétaire : `youssef@mail.com` / `test123`
-- Administrateur : `redakouchtam@icloud.com` / `Admin@12345`
-
-## Ouvrir dans VS Code
-
-1. Ouvrir VS Code.
-2. Cliquer sur `File > Open Folder`.
-3. Choisir le dossier `StudentHome`.
-4. Ouvrir un terminal intégré avec `Terminal > New Terminal`.
-5. Exécuter les commandes d'installation et de lancement.
-
-## Structure
-
-```text
 StudentHome/
-├── app.py
-├── requirements.txt
-├── database.db
+├── app.py                  # All routes, models, and business logic
+├── config.py               # App configuration (DB, Cloudinary, secret key)
+├── requirements.txt        # Python dependencies
+├── Procfile                # Render/Heroku start command
+├── render.yaml             # Render deployment config
+├── .env.example            # Environment variable template
 ├── static/
 │   ├── css/style.css
 │   ├── js/main.js
 │   └── images/
 └── templates/
+    ├── base.html
+    ├── index.html
+    ├── logements.html
+    ├── detail_logement.html
+    ├── dashboard_etudiant.html
+    ├── dashboard_proprietaire.html
+    ├── dashboard_admin.html
+    └── ...
 ```
 
-La base `database.db` est créée automatiquement au premier lancement avec des données d'exemple.
+---
+
+## Local Setup
+
+```bash
+# 1. Clone the repo
+git clone <repo-url>
+cd StudentHome
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Copy and fill in environment variables
+cp .env.example .env
+
+# 4. Run the app
+python app.py
+```
+
+Open: http://127.0.0.1:5000
+
+---
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and fill in:
+
+```env
+SECRET_KEY=your_secret_key
+DATABASE_URL=sqlite:///instance/studenthome.db   # or PostgreSQL URL
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
+```
+
+---
+
+## Test Accounts
+
+| Role | Login | Password |
+|---|---|---|
+| Student | `G123456789` | `Etudiant@123` |
+| Landlord | `youssef@mail.com` | `test123` |
+| Admin | `redakouchtam@icloud.com` | `Admin@12345` |
+
+---
+
+## Deployment (Render)
+
+The repo includes a `render.yaml` for one-click deployment.
+
+Manual setup:
+1. Push this repo to GitHub
+2. Create a new **Web Service** on [Render](https://render.com)
+3. Set the start command: `waitress-serve --host=0.0.0.0 --port=$PORT app:app`
+4. Add the environment variables from `.env.example`
+
+---
+
+## UCA Faculties Supported
+
+FSSM · FSJES · FLSH · FMPM · FST · ENCG · ENSA · ENS

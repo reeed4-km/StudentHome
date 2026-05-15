@@ -1,6 +1,0 @@
-services:
-  - type: web
-    name: studenthome-marrakech
-    env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: waitress-serve --host=0.0.0.0 --port=$PORT app:app
