@@ -80,6 +80,9 @@
                     <input type="tel" name="whatsapp_number" value="{{ current_user.whatsapp_number or '' }}" placeholder="{{ t('whatsapp_number_placeholder') }}">
                 </div>
             </div>
+            {% if current_user.whatsapp_notifications_enabled and current_user.whatsapp_number %}
+                <button class="btn btn-secondary full" type="submit" formaction="{{ url_for('test_whatsapp_notification') }}" formmethod="post">{{ t('whatsapp_test') }}</button>
+            {% endif %}
         </div>
 
         <div class="profile-password-block">

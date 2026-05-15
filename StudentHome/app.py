@@ -165,6 +165,7 @@ TRANSLATIONS = {
         "whatsapp_notifications_hint": "Recevoir une alerte lorsqu'une nouvelle annonce est publiee sur StudentHome.",
         "whatsapp_number": "Numero WhatsApp",
         "whatsapp_number_placeholder": "+212612345678",
+        "whatsapp_test": "Tester WhatsApp",
         "change_password": "Changer le mot de passe",
         "keep_password_hint": "Laissez ces champs vides si vous souhaitez garder votre mot de passe actuel.",
         "new_password": "Nouveau mot de passe",
@@ -309,6 +310,7 @@ TRANSLATIONS = {
         "whatsapp_notifications_hint": "Receive an alert when a new listing is published on StudentHome.",
         "whatsapp_number": "WhatsApp number",
         "whatsapp_number_placeholder": "+212612345678",
+        "whatsapp_test": "Test WhatsApp",
         "change_password": "Change password",
         "keep_password_hint": "Leave these fields empty if you want to keep your current password.",
         "new_password": "New password",
@@ -594,6 +596,7 @@ TRANSLATIONS["ar"].update({
     "whatsapp_notifications_hint": "استلام تنبيه عند نشر إعلان جديد على StudentHome.",
     "whatsapp_number": "رقم واتساب",
     "whatsapp_number_placeholder": "+212612345678",
+    "whatsapp_test": "اختبار واتساب",
     "change_password": "تغيير كلمة المرور",
     "keep_password_hint": "اترك هذه الخانات فارغة إذا أردت الاحتفاظ بكلمة المرور الحالية.",
     "new_password": "كلمة مرور جديدة",
@@ -858,6 +861,20 @@ class SupportMessage(db.Model):
     utilisateur = db.relationship("Utilisateur", backref="support_messages")
 
 
+class WhatsAppNotification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    utilisateur_id = db.Column(db.Integer, db.ForeignKey("utilisateur.id"), nullable=True)
+    logement_id = db.Column(db.Integer, db.ForeignKey("logement.id"), nullable=True)
+    numero = db.Column(db.String(30), nullable=False)
+    statut = db.Column(db.String(30), nullable=False)
+    message = db.Column(db.Text, nullable=True)
+    erreur = db.Column(db.Text, nullable=True)
+    date_envoi = db.Column(db.String(20), default=lambda: datetime.now().strftime("%Y-%m-%d %H:%M"))
+
+    utilisateur = db.relationship("Utilisateur", backref="notifications_whatsapp")
+    logement = db.relationship("Logement", backref="notifications_whatsapp")
+
+
 class Favori(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     utilisateur_id = db.Column(db.Integer, db.ForeignKey("utilisateur.id"), nullable=False)
@@ -1078,11 +1095,11 @@ def normalize_whatsapp_number(number):
 def send_whatsapp_text(phone_number, message):
     if not WHATSAPP_CONFIGURED:
         app.logger.info("WhatsApp notifications disabled: missing API configuration.")
-        return False
+        return False, "Configuration WhatsApp manquante sur le serveur."
 
     recipient = normalize_whatsapp_number(phone_number).lstrip("+")
     if not recipient:
-        return False
+        return False, "Numero WhatsApp invalide."
 
     payload = {
         "messaging_product": "whatsapp",
@@ -1118,10 +1135,29 @@ def send_whatsapp_text(phone_number, message):
     )
     try:
         with urllib.request.urlopen(api_request, timeout=8) as response:
-            return 200 <= response.status < 300
+            if 200 <= response.status < 300:
+                return True, ""
+            return False, f"Reponse WhatsApp inattendue: HTTP {response.status}"
+    except urllib.error.HTTPError as exc:
+        error_body = exc.read().decode("utf-8", errors="replace")
+        app.logger.warning("WhatsApp notification failed for %s: HTTP %s %s", recipient, exc.code, error_body)
+        return False, f"HTTP {exc.code}: {error_body[:500]}"
     except (urllib.error.URLError, TimeoutError) as exc:
         app.logger.warning("WhatsApp notification failed for %s: %s", recipient, exc)
-        return False
+        return False, str(exc)
+
+
+def log_whatsapp_notification(user, logement, phone_number, status, message="", error=""):
+    notification = WhatsAppNotification(
+        utilisateur_id=user.id if user else None,
+        logement_id=logement.id if logement else None,
+        numero=normalize_whatsapp_number(phone_number) or (phone_number or ""),
+        statut=status,
+        message=message[:1000] if message else None,
+        erreur=error[:1000] if error else None,
+    )
+    db.session.add(notification)
+    return notification
 
 
 def notify_users_new_listing(logement):
@@ -1142,8 +1178,18 @@ def notify_users_new_listing(logement):
     )
     sent_count = 0
     for user in recipients:
-        if send_whatsapp_text(user.whatsapp_number, message):
+        sent, error = send_whatsapp_text(user.whatsapp_number, message)
+        log_whatsapp_notification(
+            user=user,
+            logement=logement,
+            phone_number=user.whatsapp_number,
+            status="envoye" if sent else "echec",
+            message=message,
+            error=error,
+        )
+        if sent:
             sent_count += 1
+    db.session.commit()
     return sent_count
 
 
@@ -1728,6 +1774,35 @@ def profil():
         return redirect(url_for("profil"))
 
     return render_template("profil.html")
+
+
+@app.route("/profil/test-whatsapp", methods=["POST"])
+@login_required
+def test_whatsapp_notification():
+    if not current_user.whatsapp_notifications_enabled or not current_user.whatsapp_number:
+        flash("Activez les notifications WhatsApp et ajoutez un numero valide avant le test.", "error")
+        return redirect(url_for("profil"))
+
+    message = (
+        "Test StudentHome\n"
+        "Vos notifications WhatsApp sont bien activees. "
+        "Vous recevrez une alerte lorsqu'une nouvelle annonce sera publiee."
+    )
+    sent, error = send_whatsapp_text(current_user.whatsapp_number, message)
+    log_whatsapp_notification(
+        user=current_user,
+        logement=None,
+        phone_number=current_user.whatsapp_number,
+        status="envoye" if sent else "echec",
+        message=message,
+        error=error,
+    )
+    db.session.commit()
+    if sent:
+        flash("Message test WhatsApp envoye.", "success")
+    else:
+        flash(f"Test WhatsApp echoue : {error}", "error")
+    return redirect(url_for("profil"))
 
 
 @app.route("/logout")
