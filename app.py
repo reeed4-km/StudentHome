@@ -960,6 +960,24 @@ def is_valid_email(email):
     return bool(re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email.strip().lower()))
 
 
+def parse_float(value, default=None):
+    try:
+        if value in (None, ""):
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def parse_int(value, default=None):
+    try:
+        if value in (None, ""):
+            return default
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def password_errors(password):
     # RÃ¨gles lisibles pour Ã©viter les mots de passe trop faibles.
     errors = []
@@ -1168,6 +1186,12 @@ def role_required(role):
             if not current_user.is_authenticated or current_user.role != role:
                 flash("AccÃ¨s rÃ©servÃ©.", "error")
                 return redirect(url_for("index"))
+            if role == "etudiant" and not current_user.etudiant:
+                flash("Completez votre profil etudiant pour continuer.", "error")
+                return redirect(url_for("profil"))
+            if role == "proprietaire" and not current_user.proprietaire:
+                flash("Completez votre profil proprietaire pour continuer.", "error")
+                return redirect(url_for("profil"))
             return function(*args, **kwargs)
 
         return wrapper
@@ -1318,7 +1342,7 @@ def ensure_user_whatsapp_columns():
         changed = True
     if "whatsapp_notifications_enabled" not in columns:
         db.session.execute(
-            text("ALTER TABLE utilisateur ADD COLUMN whatsapp_notifications_enabled BOOLEAN DEFAULT 0")
+            text("ALTER TABLE utilisateur ADD COLUMN whatsapp_notifications_enabled BOOLEAN DEFAULT FALSE")
         )
         changed = True
     if changed:
@@ -1570,9 +1594,7 @@ def login():
             if etudiant:
                 utilisateur = etudiant.utilisateur
 
-        admin_without_password = identifiant.lower() == ADMIN_EMAIL and utilisateur and utilisateur.role == "admin"
-
-        if utilisateur and (admin_without_password or check_password_hash(utilisateur.mot_de_passe, password)):
+        if utilisateur and check_password_hash(utilisateur.mot_de_passe, password):
             login_user(utilisateur)
             if request.form.get("next"):
                 return redirect(safe_next_url("index"))
@@ -1635,7 +1657,7 @@ def profil():
                 return redirect(url_for("profil"))
             current_user.photo_profil = saved_photo
 
-        if current_user.role == "etudiant" and current_user.etudiant:
+        if current_user.role == "etudiant":
             faculte = request.form.get("faculte_uca", "").strip()
             numero = request.form.get("numero_etudiant", "").strip().upper()
 
@@ -1647,19 +1669,37 @@ def profil():
                 return redirect(url_for("profil"))
 
             existing_student = Etudiant.query.filter_by(numero_etudiant=numero).first()
-            if existing_student and existing_student.id != current_user.etudiant.id:
+            if existing_student and (not current_user.etudiant or existing_student.id != current_user.etudiant.id):
                 flash("Ce code Massar est deja utilise.", "error")
                 return redirect(url_for("profil"))
 
-            current_user.etudiant.faculte_uca = faculte
-            current_user.etudiant.numero_etudiant = numero
+            if not current_user.etudiant:
+                db.session.add(
+                    Etudiant(
+                        utilisateur_id=current_user.id,
+                        faculte_uca=faculte,
+                        numero_etudiant=numero,
+                    )
+                )
+            else:
+                current_user.etudiant.faculte_uca = faculte
+                current_user.etudiant.numero_etudiant = numero
 
-        if current_user.role == "proprietaire" and current_user.proprietaire:
+        if current_user.role == "proprietaire":
             telephone = request.form.get("telephone", "").strip()
             if not telephone:
                 flash("Le numero de telephone est obligatoire.", "error")
                 return redirect(url_for("profil"))
-            current_user.proprietaire.telephone = telephone
+            if not current_user.proprietaire:
+                db.session.add(
+                    Proprietaire(
+                        utilisateur_id=current_user.id,
+                        telephone=telephone,
+                        est_verifie=True,
+                    )
+                )
+            else:
+                current_user.proprietaire.telephone = telephone
 
         if nouveau_mot_de_passe or confirmation:
             if nouveau_mot_de_passe != confirmation:
@@ -1719,15 +1759,23 @@ def logements():
     if quartier:
         query = query.filter(Logement.quartier.ilike(f"%{quartier}%"))
     if prix_min:
-        query = query.filter(Logement.prix >= float(prix_min))
+        prix_min_value = parse_float(prix_min)
+        if prix_min_value is not None:
+            query = query.filter(Logement.prix >= prix_min_value)
     if prix_max:
-        query = query.filter(Logement.prix <= float(prix_max))
+        prix_max_value = parse_float(prix_max)
+        if prix_max_value is not None:
+            query = query.filter(Logement.prix <= prix_max_value)
     if type_logement:
         query = query.filter(Logement.type_logement == type_logement)
     if chambres:
-        query = query.filter(Logement.nombre_chambres >= int(chambres))
+        chambres_value = parse_int(chambres)
+        if chambres_value is not None:
+            query = query.filter(Logement.nombre_chambres >= chambres_value)
     if etage:
-        query = query.filter(Logement.etage == int(etage))
+        etage_value = parse_int(etage)
+        if etage_value is not None:
+            query = query.filter(Logement.etage == etage_value)
     if colocation == "1":
         query = query.filter_by(est_colocation=True)
     if disponible == "1":
@@ -1755,15 +1803,18 @@ def logements():
         for logement in logements_liste:
             distances[logement.id] = distance_to_faculty(logement, faculte)
         if distance_max:
-            max_value = float(distance_max)
-            logements_liste = [
-                logement for logement in logements_liste
-                if distances.get(logement.id) is not None and distances[logement.id] <= max_value
-            ]
+            max_value = parse_float(distance_max)
+            if max_value is not None:
+                logements_liste = [
+                    logement for logement in logements_liste
+                    if distances.get(logement.id) is not None and distances[logement.id] <= max_value
+                ]
 
-    budget_value = float(budget) if budget else (float(prix_max) if prix_max else None)
+    budget_value = parse_float(budget)
+    if budget_value is None:
+        budget_value = parse_float(prix_max)
     reco_faculte = faculte
-    if current_user.is_authenticated and current_user.role == "etudiant":
+    if current_user.is_authenticated and current_user.role == "etudiant" and current_user.etudiant:
         reco_faculte = faculte or current_user.etudiant.faculte_uca
         if budget_value is None and current_user.etudiant.profil_colocation:
             budget_value = current_user.etudiant.profil_colocation.budget or None
@@ -1827,7 +1878,7 @@ def detail_logement(id):
         flash("Demande de rÃ©servation envoyÃ©e au propriÃ©taire.", "success")
         return redirect(url_for("reservations"))
     favori_actif = False
-    if current_user.is_authenticated and current_user.role == "etudiant":
+    if current_user.is_authenticated and current_user.role == "etudiant" and current_user.etudiant:
         favori_actif = Favori.query.filter_by(utilisateur_id=current_user.id, logement_id=logement.id).first() is not None
     return render_template("detail_logement.html", logement=logement, favori_actif=favori_actif)
 
@@ -1995,12 +2046,18 @@ def supprimer_inventaire_item(item_id):
 @login_required
 def messages():
     if current_user.role == "etudiant":
+        if not current_user.etudiant:
+            flash("Completez votre profil etudiant pour utiliser la messagerie.", "error")
+            return redirect(url_for("profil"))
         messages_user = (
             Message.query.filter_by(etudiant_id=current_user.etudiant.id)
             .order_by(Message.id.desc())
             .all()
         )
     elif current_user.role == "proprietaire":
+        if not current_user.proprietaire:
+            flash("Completez votre profil proprietaire pour utiliser la messagerie.", "error")
+            return redirect(url_for("profil"))
         messages_user = (
             Message.query.filter_by(proprietaire_id=current_user.proprietaire.id)
             .order_by(Message.id.desc())
@@ -2028,9 +2085,9 @@ def discussion(logement_id, etudiant_id):
     etudiant = Etudiant.query.get_or_404(etudiant_id)
 
     if current_user.role == "etudiant":
-        allowed = current_user.etudiant.id == etudiant.id
+        allowed = bool(current_user.etudiant) and current_user.etudiant.id == etudiant.id
     elif current_user.role == "proprietaire":
-        allowed = logement.proprietaire_id == current_user.proprietaire.id
+        allowed = bool(current_user.proprietaire) and logement.proprietaire_id == current_user.proprietaire.id
     else:
         allowed = False
 
@@ -2104,16 +2161,24 @@ def paiement(id):
 @role_required("etudiant")
 def avis(id):
     reservation = Reservation.query.get_or_404(id)
+    if not current_user.etudiant or reservation.etudiant_id != current_user.etudiant.id:
+        flash("Avis inaccessible pour ce compte.", "error")
+        return redirect(url_for("reservations"))
     if reservation.statut_reservation not in ["Confirme", "ConfirmÃ©", "Termine", "TerminÃ©"]:
         flash("Vous pouvez laisser un avis aprÃ¨s confirmation ou fin de rÃ©servation.", "error")
         return redirect(url_for("reservations"))
 
     if request.method == "POST":
+        note = parse_int(request.form.get("note"))
+        commentaire = request.form.get("commentaire", "").strip()
+        if note is None or note < 1 or note > 5 or not commentaire:
+            flash("Ajoutez une note entre 1 et 5 et un commentaire.", "error")
+            return redirect(url_for("avis", id=reservation.id))
         avis_client = Avis(
             logement_id=reservation.logement_id,
             etudiant_id=current_user.etudiant.id,
-            note=int(request.form["note"]),
-            commentaire=request.form["commentaire"],
+            note=note,
+            commentaire=commentaire,
         )
         db.session.add(avis_client)
         db.session.commit()
@@ -2251,10 +2316,10 @@ def colocation():
         if not profil:
             profil = ProfilColocation(etudiant_id=current_user.etudiant.id, faculte=current_user.etudiant.faculte_uca)
             db.session.add(profil)
-        profil.budget = float(request.form.get("budget") or 0)
+        profil.budget = parse_float(request.form.get("budget"), 0) or 0
         profil.faculte = request.form.get("faculte", current_user.etudiant.faculte_uca)
         profil.fumeur = request.form.get("fumeur", "non")
-        annee = int(request.form.get("annee_universitaire") or 1)
+        annee = parse_int(request.form.get("annee_universitaire"), 1) or 1
         profil.annee_universitaire = min(max(annee, 1), 5)
         db.session.commit()
         flash("Profil colocation mis a jour.", "success")
@@ -2278,8 +2343,8 @@ def colocation():
 @app.route("/budget-colocation", methods=["POST"])
 @login_required
 def budget_colocation():
-    total = sum(float(request.form.get(champ) or 0) for champ in ["loyer", "charges", "internet", "eau"])
-    personnes = max(1, int(request.form.get("personnes") or 1))
+    total = sum(parse_float(request.form.get(champ), 0) or 0 for champ in ["loyer", "charges", "internet", "eau"])
+    personnes = max(1, parse_int(request.form.get("personnes"), 1) or 1)
     return render_template("budget_colocation.html", total=total, personnes=personnes, part=round(total / personnes, 2))
 
 
@@ -2309,10 +2374,10 @@ def coffre_fort():
 @login_required
 def contrat(id):
     reservation = Reservation.query.get_or_404(id)
-    if current_user.role == "etudiant" and reservation.etudiant_id != current_user.etudiant.id:
+    if current_user.role == "etudiant" and (not current_user.etudiant or reservation.etudiant_id != current_user.etudiant.id):
         flash("Contrat inaccessible.", "error")
         return redirect(url_for("reservations"))
-    if current_user.role == "proprietaire" and reservation.logement.proprietaire_id != current_user.proprietaire.id:
+    if current_user.role == "proprietaire" and (not current_user.proprietaire or reservation.logement.proprietaire_id != current_user.proprietaire.id):
         flash("Contrat inaccessible.", "error")
         return redirect(url_for("dashboard_proprietaire"))
 
@@ -2352,8 +2417,18 @@ def ajouter_annonce():
     if request.method == "POST":
         description = request.form["description"].strip()
         uploaded_media = save_uploaded_media(request.files.getlist("media")[0]) if request.files.getlist("media") else None
+        prix = parse_float(request.form.get("prix"))
+        nombre_chambres = parse_int(request.form.get("nombre_chambres"), 1)
+        etage = parse_int(request.form.get("etage"), 0)
+        quartier = request.form["quartier"].strip()
+        default_latitude, default_longitude = guess_coordinates(quartier)
+        latitude = parse_float(request.form.get("latitude"), default_latitude)
+        longitude = parse_float(request.form.get("longitude"), default_longitude)
         if not description_has_max_30_lines(description):
             flash("La description ne doit pas dÃ©passer 30 lignes.", "error")
+            return redirect(url_for("ajouter_annonce"))
+        if prix is None or prix <= 0:
+            flash("Ajoutez un prix mensuel valide.", "error")
             return redirect(url_for("ajouter_annonce"))
         if request.files.get("media") and request.files["media"].filename and not uploaded_media:
             flash("Format mÃ©dia non autorisÃ©. Utilisez jpg, png, webp, mp4, webm ou mov.", "error")
@@ -2364,14 +2439,14 @@ def ajouter_annonce():
             adresse=request.form.get("adresse", "").strip(),
             description=description,
             reglement_interieur=request.form.get("reglement_interieur", "").strip(),
-            prix=float(request.form["prix"]),
-            quartier=request.form["quartier"].strip(),
+            prix=prix,
+            quartier=quartier,
             proximite_faculte=request.form["proximite_faculte"].strip(),
             type_logement=request.form["type_logement"],
-            nombre_chambres=int(request.form.get("nombre_chambres") or 1),
-            etage=int(request.form.get("etage") or 0),
-            latitude=float(request.form["latitude"]) if request.form.get("latitude") else guess_coordinates(request.form["quartier"].strip())[0],
-            longitude=float(request.form["longitude"]) if request.form.get("longitude") else guess_coordinates(request.form["quartier"].strip())[1],
+            nombre_chambres=nombre_chambres or 1,
+            etage=etage or 0,
+            latitude=latitude,
+            longitude=longitude,
             est_colocation=request.form.get("est_colocation") == "1",
             photos=uploaded_media or request.form.get("photos") or "marrakech-rooftop-sunset.jpg",
             est_disponible=True,
@@ -2405,8 +2480,14 @@ def modifier_annonce(id):
     if request.method == "POST":
         description = request.form["description"].strip()
         uploaded_media = save_uploaded_media(request.files.getlist("media")[0]) if request.files.getlist("media") else None
+        prix = parse_float(request.form.get("prix"))
+        nombre_chambres = parse_int(request.form.get("nombre_chambres"), 1)
+        etage = parse_int(request.form.get("etage"), 0)
         if not description_has_max_30_lines(description):
             flash("La description ne doit pas dÃ©passer 30 lignes.", "error")
+            return redirect(url_for("modifier_annonce", id=logement.id))
+        if prix is None or prix <= 0:
+            flash("Ajoutez un prix mensuel valide.", "error")
             return redirect(url_for("modifier_annonce", id=logement.id))
         if request.files.get("media") and request.files["media"].filename and not uploaded_media:
             flash("Format mÃ©dia non autorisÃ©. Utilisez jpg, png, webp, mp4, webm ou mov.", "error")
@@ -2416,14 +2497,15 @@ def modifier_annonce(id):
         logement.adresse = request.form.get("adresse", "").strip()
         logement.description = description
         logement.reglement_interieur = request.form.get("reglement_interieur", "").strip()
-        logement.prix = float(request.form["prix"])
+        logement.prix = prix
         logement.quartier = request.form["quartier"].strip()
         logement.proximite_faculte = request.form["proximite_faculte"].strip()
         logement.type_logement = request.form["type_logement"]
-        logement.nombre_chambres = int(request.form.get("nombre_chambres") or 1)
-        logement.etage = int(request.form.get("etage") or 0)
-        logement.latitude = float(request.form["latitude"]) if request.form.get("latitude") else guess_coordinates(logement.quartier)[0]
-        logement.longitude = float(request.form["longitude"]) if request.form.get("longitude") else guess_coordinates(logement.quartier)[1]
+        logement.nombre_chambres = nombre_chambres or 1
+        logement.etage = etage or 0
+        default_latitude, default_longitude = guess_coordinates(logement.quartier)
+        logement.latitude = parse_float(request.form.get("latitude"), default_latitude)
+        logement.longitude = parse_float(request.form.get("longitude"), default_longitude)
         logement.est_colocation = request.form.get("est_colocation") == "1"
         logement.photos = uploaded_media or request.form.get("photos") or logement.photos
         logement.est_disponible = True

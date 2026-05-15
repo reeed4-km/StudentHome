@@ -47,22 +47,22 @@
             </div>
         </div>
 
-        {% if current_user.role == 'etudiant' and current_user.etudiant %}
+        {% if current_user.role == 'etudiant' %}
             <div class="register-grid">
                 <div class="field">
                     <label>{{ t('faculty') }}</label>
-                    <input type="text" name="faculte_uca" value="{{ current_user.etudiant.faculte_uca }}" required>
+                    <input type="text" name="faculte_uca" value="{{ current_user.etudiant.faculte_uca if current_user.etudiant else '' }}" required>
                 </div>
                 <div class="field">
                     <label>{{ t('massar_code') }}</label>
-                    <input type="text" name="numero_etudiant" value="{{ current_user.etudiant.numero_etudiant }}" required>
+                    <input type="text" name="numero_etudiant" value="{{ current_user.etudiant.numero_etudiant if current_user.etudiant else '' }}" required>
                 </div>
             </div>
-        {% elif current_user.role == 'proprietaire' and current_user.proprietaire %}
+        {% elif current_user.role == 'proprietaire' %}
             <div class="register-grid">
                 <div class="field field-wide">
                     <label>{{ t('phone') }}</label>
-                    <input type="text" name="telephone" value="{{ current_user.proprietaire.telephone }}" required>
+                    <input type="text" name="telephone" value="{{ current_user.proprietaire.telephone if current_user.proprietaire else '' }}" required>
                 </div>
             </div>
         {% endif %}
