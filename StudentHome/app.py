@@ -744,6 +744,7 @@ class Logement(db.Model):
     est_colocation = db.Column(db.Boolean, default=False)
     vues = db.Column(db.Integer, default=0)
     photos = db.Column(db.String(220), default="marrakech-rooftop-sunset.jpg")
+    media_items = db.Column(db.Text, nullable=True)
     est_disponible = db.Column(db.Boolean, default=True)
     date_disponibilite = db.Column(db.String(20), nullable=True)
     est_valide = db.Column(db.Boolean, default=False)
@@ -755,8 +756,23 @@ class Logement(db.Model):
     avis = db.relationship("Avis", backref="logement", cascade="all, delete")
 
     @property
-    def media_path(self):
-      photo = (self.photos or DEFAULT_HOUSING_IMAGE).strip()
+    def media_sources(self):
+        sources = []
+        if self.media_items:
+            try:
+                loaded = json.loads(self.media_items)
+                if isinstance(loaded, list):
+                    sources.extend(str(item).strip() for item in loaded if str(item).strip())
+            except (TypeError, ValueError):
+                sources.extend(item.strip() for item in self.media_items.split(",") if item.strip())
+        if self.photos:
+            photo = self.photos.strip()
+            if photo and photo not in sources:
+                sources.insert(0, photo)
+        return sources or [DEFAULT_HOUSING_IMAGE]
+
+    def media_url(self, source):
+      photo = (source or DEFAULT_HOUSING_IMAGE).strip()
 
       if photo.startswith(("http://", "https://")):
         return photo
@@ -773,18 +789,21 @@ class Logement(db.Model):
       return url_for("static", filename="images/" + photo)
 
     @property
+    def media_path(self):
+        return self.media_url(self.media_sources[0])
+
+    @property
     def fallback_media_path(self):
         return url_for("static", filename=f"images/{DEFAULT_HOUSING_IMAGE}")
 
     @property
     def media_exists(self):
-        return bool(self.photos)
+        return bool(self.media_sources)
 
     @property
     def is_video(self):
-        if not self.photos:
-            return False
-        extension = self.photos.rsplit(".", 1)[-1].lower()
+        source = self.media_sources[0]
+        extension = source.rsplit(".", 1)[-1].lower() if "." in source else ""
         return extension in VIDEO_EXTENSIONS
 
     @property
@@ -809,10 +828,11 @@ class Logement(db.Model):
 
     @property
     def visible_medias(self):
-        if not self.photos:
-            return []
-        ext = self.photos.rsplit(".", 1)[-1].lower() if "." in self.photos else ""
-        return [Logement._MediaItem(self.media_path, ext in VIDEO_EXTENSIONS)]
+        medias = []
+        for source in self.media_sources:
+            ext = source.rsplit(".", 1)[-1].lower() if "." in source else ""
+            medias.append(Logement._MediaItem(self.media_url(source), ext in VIDEO_EXTENSIONS))
+        return medias
 
     @property
     def medias(self):
@@ -1076,6 +1096,16 @@ def save_uploaded_media(file_storage):
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     file_storage.save(os.path.join(UPLOAD_FOLDER, saved_name))
     return "uploads/" + saved_name
+
+
+def save_uploaded_medias(file_storages):
+    saved_medias = []
+    for file_storage in file_storages:
+        saved_media = save_uploaded_media(file_storage)
+        if not saved_media:
+            return None
+        saved_medias.append(saved_media)
+    return saved_medias
 
 
 def save_uploaded_profile_image(file_storage):
@@ -1429,6 +1459,7 @@ def ensure_logement_advanced_columns():
     column_names = [column["name"] for column in inspector.get_columns("logement")]
     advanced_columns = {
         "reglement_interieur": "TEXT",
+        "media_items": "TEXT",
         "nombre_chambres": "INTEGER DEFAULT 1",
         "etage": "INTEGER DEFAULT 0",
         "latitude": "FLOAT",
@@ -1793,7 +1824,13 @@ def profil():
         flash("Profil mis a jour avec succes.", "success")
         return redirect(url_for("profil"))
 
-    return render_template("profil.html")
+    whatsapp_logs = (
+        WhatsAppNotification.query.filter_by(utilisateur_id=current_user.id)
+        .order_by(WhatsAppNotification.id.desc())
+        .limit(5)
+        .all()
+    )
+    return render_template("profil.html", whatsapp_logs=whatsapp_logs)
 
 
 @app.route("/profil/test-whatsapp", methods=["POST"])
@@ -2543,7 +2580,9 @@ def ajouter_annonce():
     if request.method == "POST":
         description = request.form["description"].strip()
         media_files = [file for file in request.files.getlist("media") if file and file.filename]
-        uploaded_media = save_uploaded_media(media_files[0]) if media_files else None
+        uploaded_medias = save_uploaded_medias(media_files) if media_files else []
+        if uploaded_medias is None:
+            uploaded_medias = []
         prix = parse_float(request.form.get("prix"))
         nombre_chambres = parse_int(request.form.get("nombre_chambres"), 1)
         etage = parse_int(request.form.get("etage"), 0)
@@ -2557,9 +2596,11 @@ def ajouter_annonce():
         if prix is None or prix <= 0:
             flash("Ajoutez un prix mensuel valide.", "error")
             return redirect(url_for("ajouter_annonce"))
-        if request.files.get("media") and request.files["media"].filename and not uploaded_media:
+        if media_files and not uploaded_medias:
             flash("Format mÃ©dia non autorisÃ©. Utilisez jpg, png, webp, mp4, webm ou mov.", "error")
             return redirect(url_for("ajouter_annonce"))
+        default_media = request.form.get("photos") or DEFAULT_HOUSING_IMAGE
+        media_sources = uploaded_medias or [default_media]
 
         logement = Logement(
             titre=request.form["titre"].strip(),
@@ -2575,7 +2616,8 @@ def ajouter_annonce():
             latitude=latitude,
             longitude=longitude,
             est_colocation=request.form.get("est_colocation") == "1",
-            photos=uploaded_media or request.form.get("photos") or DEFAULT_HOUSING_IMAGE,
+            photos=media_sources[0],
+            media_items=json.dumps(media_sources),
             est_disponible=True,
             date_disponibilite=request.form["date_disponibilite"],
             est_valide=True,
@@ -2607,7 +2649,9 @@ def modifier_annonce(id):
     if request.method == "POST":
         description = request.form["description"].strip()
         media_files = [file for file in request.files.getlist("media") if file and file.filename]
-        uploaded_media = save_uploaded_media(media_files[0]) if media_files else None
+        uploaded_medias = save_uploaded_medias(media_files) if media_files else []
+        if uploaded_medias is None:
+            uploaded_medias = []
         prix = parse_float(request.form.get("prix"))
         nombre_chambres = parse_int(request.form.get("nombre_chambres"), 1)
         etage = parse_int(request.form.get("etage"), 0)
@@ -2617,7 +2661,7 @@ def modifier_annonce(id):
         if prix is None or prix <= 0:
             flash("Ajoutez un prix mensuel valide.", "error")
             return redirect(url_for("modifier_annonce", id=logement.id))
-        if request.files.get("media") and request.files["media"].filename and not uploaded_media:
+        if media_files and not uploaded_medias:
             flash("Format mÃ©dia non autorisÃ©. Utilisez jpg, png, webp, mp4, webm ou mov.", "error")
             return redirect(url_for("modifier_annonce", id=logement.id))
 
@@ -2635,7 +2679,14 @@ def modifier_annonce(id):
         logement.latitude = parse_float(request.form.get("latitude"), default_latitude)
         logement.longitude = parse_float(request.form.get("longitude"), default_longitude)
         logement.est_colocation = request.form.get("est_colocation") == "1"
-        logement.photos = uploaded_media or request.form.get("photos") or logement.photos
+        if uploaded_medias:
+            existing_sources = logement.media_sources if logement.media_items else []
+            media_sources = existing_sources + uploaded_medias
+            logement.photos = media_sources[0]
+            logement.media_items = json.dumps(media_sources)
+        elif request.form.get("photos") and not logement.media_items:
+            logement.photos = request.form.get("photos")
+            logement.media_items = json.dumps([logement.photos])
         logement.est_disponible = True
         logement.date_disponibilite = request.form["date_disponibilite"]
         logement.est_valide = True
