@@ -6,8 +6,8 @@
     <div class="stats-grid dashboard-stats">
         <article><strong>{{ reservations|length }}</strong><span>Réservations</span></article>
         <article><strong>{{ favoris_count }}</strong><span>Favoris</span></article>
-        <article><strong>{{ current_user.etudiant.faculte_uca }}</strong><span>Faculté</span></article>
-        <article><strong>{{ current_user.etudiant.numero_etudiant }}</strong><span>Code Massar</span></article>
+        <article><strong>{{ etudiant.faculte_uca if etudiant else 'A completer' }}</strong><span>Faculté</span></article>
+        <article><strong>{{ etudiant.numero_etudiant if etudiant else 'A completer' }}</strong><span>Code Massar</span></article>
     </div>
     <div class="actions dashboard-actions">
         <a class="btn btn-primary" href="{{ url_for('logements') }}">Chercher un logement</a>

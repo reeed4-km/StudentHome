@@ -42,8 +42,8 @@
             <div class="list">
                 {% for message in messages_recents %}
                     <div class="row">
-                        <strong>{{ message.expediteur.nom|fix_encoding }}</strong>
-                        <span>{{ message.logement.titre|fix_encoding }}</span>
+                        <strong>{{ (message.expediteur.nom if message.expediteur else 'Utilisateur indisponible')|fix_encoding }}</strong>
+                        <span>{{ (message.logement.titre if message.logement else 'Logement indisponible')|fix_encoding }}</span>
                         <small>{{ message.date_envoi }}</small>
                     </div>
                 {% else %}
@@ -119,8 +119,8 @@
             <tbody>
                 {% for reservation in reservations %}
                     <tr>
-                        <td>{{ reservation.logement.titre|fix_encoding }}</td>
-                        <td>{{ reservation.etudiant.utilisateur.nom|fix_encoding }}</td>
+                        <td>{{ (reservation.logement.titre if reservation.logement else 'Logement indisponible')|fix_encoding }}</td>
+                        <td>{{ (reservation.etudiant.utilisateur.nom if reservation.etudiant and reservation.etudiant.utilisateur else 'Etudiant indisponible')|fix_encoding }}</td>
                         <td>{{ reservation.montant_total|int }} DH</td>
                         <td>{{ reservation.statut_reservation|fix_encoding }}</td>
                     </tr>

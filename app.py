@@ -978,6 +978,16 @@ def parse_int(value, default=None):
         return default
 
 
+def get_colocation_profile(etudiant):
+    if not etudiant:
+        return None
+    return (
+        ProfilColocation.query.filter_by(etudiant_id=etudiant.id)
+        .order_by(ProfilColocation.id.desc())
+        .first()
+    )
+
+
 def password_errors(password):
     # RÃ¨gles lisibles pour Ã©viter les mots de passe trop faibles.
     errors = []
@@ -1816,8 +1826,9 @@ def logements():
     reco_faculte = faculte
     if current_user.is_authenticated and current_user.role == "etudiant" and current_user.etudiant:
         reco_faculte = faculte or current_user.etudiant.faculte_uca
-        if budget_value is None and current_user.etudiant.profil_colocation:
-            budget_value = current_user.etudiant.profil_colocation.budget or None
+        profil_coloc = get_colocation_profile(current_user.etudiant)
+        if budget_value is None and profil_coloc:
+            budget_value = profil_coloc.budget or None
 
     recommandations_source = Logement.query.filter_by(est_valide=True, est_bloque=False).all()
     recommandations = []
@@ -2192,9 +2203,14 @@ def avis(id):
 @login_required
 @role_required("etudiant")
 def dashboard_etudiant():
-    reservations_etudiant = Reservation.query.filter_by(etudiant_id=current_user.etudiant.id).all()
+    etudiant = current_user.etudiant
+    reservations_etudiant = (
+        Reservation.query.filter_by(etudiant_id=etudiant.id)
+        .order_by(Reservation.id.desc())
+        .all()
+    )
     favoris_count = Favori.query.filter_by(utilisateur_id=current_user.id).count()
-    profil_coloc = current_user.etudiant.profil_colocation
+    profil_coloc = get_colocation_profile(etudiant)
     recommandations = []
     if profil_coloc:
         recommandations = sorted(
@@ -2204,6 +2220,7 @@ def dashboard_etudiant():
         )[:3]
     return render_template(
         "dashboard_etudiant.html",
+        etudiant=etudiant,
         reservations=reservations_etudiant,
         favoris_count=favoris_count,
         recommandations=recommandations,
@@ -2266,24 +2283,33 @@ def dashboard_admin():
 
     activites = []
     for logement in logements[:5]:
+        owner_name = "Proprietaire indisponible"
+        if logement.proprietaire and logement.proprietaire.utilisateur:
+            owner_name = logement.proprietaire.utilisateur.nom
         activites.append({
             "type": "Annonce",
             "titre": logement.titre,
-            "detail": f"{logement.proprietaire.utilisateur.nom} - {logement.quartier}",
+            "detail": f"{owner_name} - {logement.quartier}",
             "date": f"#{logement.id}",
         })
     for reservation in reservations[:5]:
+        logement_title = reservation.logement.titre if reservation.logement else "Logement indisponible"
+        student_name = "Etudiant indisponible"
+        if reservation.etudiant and reservation.etudiant.utilisateur:
+            student_name = reservation.etudiant.utilisateur.nom
         activites.append({
             "type": "RÃ©servation",
-            "titre": reservation.logement.titre,
-            "detail": f"{reservation.etudiant.utilisateur.nom} - {reservation.statut_reservation}",
+            "titre": logement_title,
+            "detail": f"{student_name} - {reservation.statut_reservation}",
             "date": f"#{reservation.id}",
         })
     for message in messages_recents[:5]:
+        logement_title = message.logement.titre if message.logement else "Logement indisponible"
+        sender_name = message.expediteur.nom if message.expediteur else "Utilisateur indisponible"
         activites.append({
             "type": "Message",
-            "titre": message.logement.titre,
-            "detail": f"{message.expediteur.nom} : {message.contenu[:70]}",
+            "titre": logement_title,
+            "detail": f"{sender_name} : {message.contenu[:70]}",
             "date": message.date_envoi,
         })
     for support in support_messages[:5]:
@@ -2311,7 +2337,7 @@ def dashboard_admin():
 @login_required
 @role_required("etudiant")
 def colocation():
-    profil = current_user.etudiant.profil_colocation
+    profil = get_colocation_profile(current_user.etudiant)
     if request.method == "POST":
         if not profil:
             profil = ProfilColocation(etudiant_id=current_user.etudiant.id, faculte=current_user.etudiant.faculte_uca)
@@ -2374,6 +2400,11 @@ def coffre_fort():
 @login_required
 def contrat(id):
     reservation = Reservation.query.get_or_404(id)
+    if not reservation.logement or not reservation.etudiant:
+        flash("Contrat indisponible car la reservation est incomplete.", "error")
+        if current_user.role == "proprietaire":
+            return redirect(url_for("dashboard_proprietaire"))
+        return redirect(url_for("reservations"))
     if current_user.role == "etudiant" and (not current_user.etudiant or reservation.etudiant_id != current_user.etudiant.id):
         flash("Contrat inaccessible.", "error")
         return redirect(url_for("reservations"))
@@ -2551,7 +2582,7 @@ def supprimer_annonce(id):
 @role_required("proprietaire")
 def accepter_reservation(id):
     reservation = Reservation.query.get_or_404(id)
-    if reservation.logement.proprietaire_id == current_user.proprietaire.id:
+    if reservation.logement and reservation.logement.proprietaire_id == current_user.proprietaire.id:
         reservation.statut_reservation = "Confirme"
         reservation.statut_paiement = "Non disponible"
         db.session.commit()
@@ -2564,7 +2595,7 @@ def accepter_reservation(id):
 @role_required("proprietaire")
 def refuser_reservation(id):
     reservation = Reservation.query.get_or_404(id)
-    if reservation.logement.proprietaire_id == current_user.proprietaire.id:
+    if reservation.logement and reservation.logement.proprietaire_id == current_user.proprietaire.id:
         reservation.statut_reservation = "RefusÃ©"
         db.session.commit()
         flash("Demande refusÃ©e.", "success")
@@ -2576,7 +2607,7 @@ def refuser_reservation(id):
 @role_required("proprietaire")
 def confirmer_conformite(id):
     reservation = Reservation.query.get_or_404(id)
-    if reservation.logement.proprietaire_id == current_user.proprietaire.id:
+    if reservation.logement and reservation.logement.proprietaire_id == current_user.proprietaire.id:
         reservation.statut_reservation = "TerminÃ©"
         db.session.commit()
         flash("Logement confirmÃ© conforme. RÃ©servation terminÃ©e.", "success")

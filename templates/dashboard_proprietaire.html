@@ -69,7 +69,7 @@
             <thead><tr><th>Etudiant</th><th>Logement</th><th>Date</th><th>Statut</th></tr></thead>
             <tbody>
                 {% for visite in visites %}
-                <tr><td>{{ visite.etudiant.utilisateur.nom }}</td><td>{{ visite.logement.titre }}</td><td>{{ visite.date_visite }}</td><td>{{ visite.statut }}</td></tr>
+                <tr><td>{{ visite.etudiant.utilisateur.nom if visite.etudiant and visite.etudiant.utilisateur else 'Etudiant indisponible' }}</td><td>{{ visite.logement.titre if visite.logement else 'Logement indisponible' }}</td><td>{{ visite.date_visite }}</td><td>{{ visite.statut }}</td></tr>
                 {% else %}
                 <tr><td colspan="4">Aucune visite planifiee.</td></tr>
                 {% endfor %}
@@ -83,7 +83,7 @@
             <thead><tr><th>Logement</th><th>Etudiant</th><th>Description</th><th>Statut</th></tr></thead>
             <tbody>
                 {% for incident in incidents %}
-                <tr><td>{{ incident.logement.titre }}</td><td>{{ incident.etudiant.utilisateur.nom }}</td><td>{{ incident.description }}</td><td>{{ incident.statut }}</td></tr>
+                <tr><td>{{ incident.logement.titre if incident.logement else 'Logement indisponible' }}</td><td>{{ incident.etudiant.utilisateur.nom if incident.etudiant and incident.etudiant.utilisateur else 'Etudiant indisponible' }}</td><td>{{ incident.description }}</td><td>{{ incident.statut }}</td></tr>
                 {% else %}
                 <tr><td colspan="4">Aucun incident.</td></tr>
                 {% endfor %}
@@ -98,8 +98,8 @@
             <tbody>
                 {% for demande in demandes %}
                 <tr>
-                    <td>{{ demande.etudiant.utilisateur.nom }}</td>
-                    <td>{{ demande.logement.titre }}</td>
+                    <td>{{ demande.etudiant.utilisateur.nom if demande.etudiant and demande.etudiant.utilisateur else 'Etudiant indisponible' }}</td>
+                    <td>{{ demande.logement.titre if demande.logement else 'Logement indisponible' }}</td>
                     <td>{{ demande.statut_reservation }}</td>
                     <td class="table-actions">
                         <a class="btn btn-small" href="{{ url_for('accepter_reservation', id=demande.id) }}">Accepter</a>

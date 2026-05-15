@@ -12,12 +12,12 @@
         <tbody>
             {% for reservation in reservations %}
             <tr>
-                <td>{{ reservation.logement.titre }}</td>
+                <td>{{ reservation.logement.titre if reservation.logement else 'Logement indisponible' }}</td>
                 <td>{{ reservation.date_debut }}</td>
                 <td>{{ reservation.montant_total|int }} DH</td>
                 <td>{{ reservation.statut_reservation }}</td>
                 <td class="table-actions">
-                    {% if reservation.statut_reservation in ['Confirme', 'ConfirmÃ©', 'Termine', 'TerminÃ©'] %}
+                    {% if reservation.logement and reservation.statut_reservation in ['Confirme', 'ConfirmÃ©', 'Confirmé', 'Termine', 'TerminÃ©', 'Terminé'] %}
                         <a class="btn btn-small btn-secondary" href="{{ url_for('avis', id=reservation.id) }}">{{ t('review') }}</a>
                         <a class="btn btn-small btn-light" href="{{ url_for('contrat', id=reservation.id) }}">{{ t('contract') }}</a>
                     {% else %}
