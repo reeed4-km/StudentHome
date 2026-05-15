@@ -3,7 +3,10 @@ import cloudinary.uploader
 import os
 import re
 import io
+import json
 import math
+import urllib.error
+import urllib.request
 from datetime import date, datetime, timedelta
 from functools import wraps
 
@@ -158,6 +161,10 @@ TRANSLATIONS = {
         "profile_hint": "Votre email reste verrouillÃ©. Vous pouvez modifier les autres informations de votre compte.",
         "profile_photo": "Photo de profil",
         "profile_photo_hint": "Ajoutez une image JPG, PNG ou WEBP. Si vous ne choisissez rien, l'avatar actuel reste gardÃ©.",
+        "whatsapp_notifications": "Notifications WhatsApp",
+        "whatsapp_notifications_hint": "Recevoir une alerte lorsqu'une nouvelle annonce est publiee sur StudentHome.",
+        "whatsapp_number": "Numero WhatsApp",
+        "whatsapp_number_placeholder": "+212612345678",
         "change_password": "Changer le mot de passe",
         "keep_password_hint": "Laissez ces champs vides si vous souhaitez garder votre mot de passe actuel.",
         "new_password": "Nouveau mot de passe",
@@ -298,6 +305,10 @@ TRANSLATIONS = {
         "profile_hint": "Your email stays locked. You can edit the other information in your account.",
         "profile_photo": "Profile photo",
         "profile_photo_hint": "Add a JPG, PNG or WEBP image. If you choose nothing, the current avatar is kept.",
+        "whatsapp_notifications": "WhatsApp notifications",
+        "whatsapp_notifications_hint": "Receive an alert when a new listing is published on StudentHome.",
+        "whatsapp_number": "WhatsApp number",
+        "whatsapp_number_placeholder": "+212612345678",
         "change_password": "Change password",
         "keep_password_hint": "Leave these fields empty if you want to keep your current password.",
         "new_password": "New password",
@@ -579,6 +590,10 @@ TRANSLATIONS["ar"].update({
     "profile_hint": "يبقى بريدك الإلكتروني مقفلا. يمكنك تعديل باقي معلومات حسابك.",
     "profile_photo": "صورة الملف الشخصي",
     "profile_photo_hint": "أضف صورة JPG أو PNG أو WEBP. إذا لم تختر شيئا فسيبقى الرمز الحالي.",
+    "whatsapp_notifications": "إشعارات واتساب",
+    "whatsapp_notifications_hint": "استلام تنبيه عند نشر إعلان جديد على StudentHome.",
+    "whatsapp_number": "رقم واتساب",
+    "whatsapp_number_placeholder": "+212612345678",
     "change_password": "تغيير كلمة المرور",
     "keep_password_hint": "اترك هذه الخانات فارغة إذا أردت الاحتفاظ بكلمة المرور الحالية.",
     "new_password": "كلمة مرور جديدة",
@@ -661,6 +676,11 @@ cloudinary.config(
     api_secret=_cld_secret,
     secure=True
 )
+WHATSAPP_PHONE_NUMBER_ID = os.environ.get("WHATSAPP_PHONE_NUMBER_ID")
+WHATSAPP_ACCESS_TOKEN = os.environ.get("WHATSAPP_ACCESS_TOKEN")
+WHATSAPP_TEMPLATE_NAME = os.environ.get("WHATSAPP_TEMPLATE_NAME")
+WHATSAPP_TEMPLATE_LANGUAGE = os.environ.get("WHATSAPP_TEMPLATE_LANGUAGE", "fr")
+WHATSAPP_CONFIGURED = bool(WHATSAPP_PHONE_NUMBER_ID and WHATSAPP_ACCESS_TOKEN)
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
@@ -676,6 +696,8 @@ class Utilisateur(UserMixin, db.Model):
     mot_de_passe = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(30), nullable=False)
     photo_profil = db.Column(db.String(220), nullable=True)
+    whatsapp_number = db.Column(db.String(30), nullable=True)
+    whatsapp_notifications_enabled = db.Column(db.Boolean, default=False)
 
     etudiant = db.relationship("Etudiant", backref="utilisateur", uselist=False, cascade="all, delete")
     proprietaire = db.relationship("Proprietaire", backref="utilisateur", uselist=False, cascade="all, delete")
@@ -1014,6 +1036,89 @@ def save_uploaded_document(file_storage):
     return "uploads/" + saved_name
 
 
+def normalize_whatsapp_number(number):
+    cleaned = re.sub(r"[^\d+]", "", number or "")
+    if cleaned.startswith("00"):
+        cleaned = "+" + cleaned[2:]
+    if cleaned.startswith("0") and len(cleaned) == 10:
+        cleaned = "+212" + cleaned[1:]
+    if cleaned and not cleaned.startswith("+"):
+        cleaned = "+" + cleaned
+    return cleaned if re.fullmatch(r"\+[1-9]\d{7,14}", cleaned) else ""
+
+
+def send_whatsapp_text(phone_number, message):
+    if not WHATSAPP_CONFIGURED:
+        app.logger.info("WhatsApp notifications disabled: missing API configuration.")
+        return False
+
+    recipient = normalize_whatsapp_number(phone_number).lstrip("+")
+    if not recipient:
+        return False
+
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": recipient,
+        "type": "text",
+        "text": {"preview_url": True, "body": message},
+    }
+    if WHATSAPP_TEMPLATE_NAME:
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": recipient,
+            "type": "template",
+            "template": {
+                "name": WHATSAPP_TEMPLATE_NAME,
+                "language": {"code": WHATSAPP_TEMPLATE_LANGUAGE},
+                "components": [
+                    {
+                        "type": "body",
+                        "parameters": [{"type": "text", "text": message[:1024]}],
+                    }
+                ],
+            },
+        }
+    request_data = json.dumps(payload).encode("utf-8")
+    api_request = urllib.request.Request(
+        f"https://graph.facebook.com/v20.0/{WHATSAPP_PHONE_NUMBER_ID}/messages",
+        data=request_data,
+        headers={
+            "Authorization": f"Bearer {WHATSAPP_ACCESS_TOKEN}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(api_request, timeout=8) as response:
+            return 200 <= response.status < 300
+    except (urllib.error.URLError, TimeoutError) as exc:
+        app.logger.warning("WhatsApp notification failed for %s: %s", recipient, exc)
+        return False
+
+
+def notify_users_new_listing(logement):
+    recipients = Utilisateur.query.filter(
+        Utilisateur.whatsapp_notifications_enabled.is_(True),
+        Utilisateur.whatsapp_number.isnot(None),
+        Utilisateur.id != current_user.id,
+    ).all()
+    if not recipients:
+        return 0
+
+    listing_url = url_for("detail_logement", id=logement.id, _external=True)
+    message = (
+        "Nouvelle annonce sur StudentHome\n"
+        f"{logement.titre}\n"
+        f"{logement.quartier} - {int(logement.prix)} MAD/mois\n"
+        f"Voir l'annonce: {listing_url}"
+    )
+    sent_count = 0
+    for user in recipients:
+        if send_whatsapp_text(user.whatsapp_number, message):
+            sent_count += 1
+    return sent_count
+
+
 def haversine_km(lat1, lng1, lat2, lng2):
     radius = 6371
     dlat = math.radians(lat2 - lat1)
@@ -1200,6 +1305,25 @@ def ensure_user_profile_photo_column():
         )
         db.session.commit()
 
+
+def ensure_user_whatsapp_columns():
+    inspector = inspect(db.engine)
+    columns = [column["name"] for column in inspector.get_columns("utilisateur")]
+
+    changed = False
+    if "whatsapp_number" not in columns:
+        db.session.execute(
+            text("ALTER TABLE utilisateur ADD COLUMN whatsapp_number VARCHAR(30)")
+        )
+        changed = True
+    if "whatsapp_notifications_enabled" not in columns:
+        db.session.execute(
+            text("ALTER TABLE utilisateur ADD COLUMN whatsapp_notifications_enabled BOOLEAN DEFAULT 0")
+        )
+        changed = True
+    if changed:
+        db.session.commit()
+
 def ensure_logement_advanced_columns():
     inspector = inspect(db.engine)
     column_names = [column["name"] for column in inspector.get_columns("logement")]
@@ -1234,6 +1358,7 @@ def init_database():
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     db.create_all()
     ensure_user_profile_photo_column()
+    ensure_user_whatsapp_columns()
     ensure_logement_advanced_columns()
     ensure_colocation_year_column()
     ensure_logement_type_column()
@@ -1489,12 +1614,19 @@ def profil():
         nouveau_mot_de_passe = request.form.get("nouveau_mot_de_passe", "")
         confirmation = request.form.get("confirmation", "")
         photo = request.files.get("photo_profil")
+        whatsapp_enabled = request.form.get("whatsapp_notifications_enabled") == "1"
+        whatsapp_number = normalize_whatsapp_number(request.form.get("whatsapp_number", ""))
 
         if not nom:
             flash("Le nom ne peut pas etre vide.", "error")
             return redirect(url_for("profil"))
+        if whatsapp_enabled and not whatsapp_number:
+            flash("Ajoutez un numero WhatsApp valide pour activer les notifications.", "error")
+            return redirect(url_for("profil"))
 
         current_user.nom = nom
+        current_user.whatsapp_notifications_enabled = whatsapp_enabled
+        current_user.whatsapp_number = whatsapp_number or None
 
         if photo and photo.filename:
             saved_photo = save_uploaded_profile_image(photo)
@@ -2249,7 +2381,14 @@ def ajouter_annonce():
         )
         db.session.add(logement)
         db.session.commit()
-        flash("Annonce ajoutÃ©e avec succÃ¨s. Elle est maintenant visible dans les logements.", "success")
+        sent_count = notify_users_new_listing(logement)
+        if WHATSAPP_CONFIGURED:
+            flash(
+                f"Annonce ajoutÃ©e avec succÃ¨s. {sent_count} notification(s) WhatsApp envoyee(s).",
+                "success",
+            )
+        else:
+            flash("Annonce ajoutÃ©e avec succÃ¨s. Notifications WhatsApp desactivees car l'API n'est pas configuree.", "success")
         return redirect(url_for("dashboard_proprietaire"))
     return render_template("ajouter_annonce.html", logement=None)
 
@@ -2381,4 +2520,3 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug_mode = os.environ.get("FLASK_DEBUG", "0") == "1"
     app.run(host="0.0.0.0", port=port, debug=debug_mode)
-

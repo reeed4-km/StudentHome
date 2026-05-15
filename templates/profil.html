@@ -68,6 +68,21 @@
         {% endif %}
 
         <div class="profile-password-block">
+            <h2>{{ t('whatsapp_notifications') }}</h2>
+            <p class="form-hint">{{ t('whatsapp_notifications_hint') }}</p>
+            <div class="register-grid">
+                <label class="check field-wide">
+                    <input type="checkbox" name="whatsapp_notifications_enabled" value="1" {% if current_user.whatsapp_notifications_enabled %}checked{% endif %}>
+                    {{ t('whatsapp_notifications') }}
+                </label>
+                <div class="field field-wide">
+                    <label>{{ t('whatsapp_number') }}</label>
+                    <input type="tel" name="whatsapp_number" value="{{ current_user.whatsapp_number or '' }}" placeholder="{{ t('whatsapp_number_placeholder') }}">
+                </div>
+            </div>
+        </div>
+
+        <div class="profile-password-block">
             <h2>{{ t('change_password') }}</h2>
             <p class="form-hint">{{ t('keep_password_hint') }}</p>
             <div class="register-grid">
